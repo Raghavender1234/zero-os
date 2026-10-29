@@ -18,6 +18,9 @@ sealed class ZeroCommand {
     data class FreezeApp(val targetApps: List<String>) : ZeroCommand()
     data class UnfreezeApp(val targetApps: List<String>) : ZeroCommand()
     data class ToggleMicroWindow(val enable: Boolean) : ZeroCommand()
+    data class ToggleCalmDigest(val enable: Boolean) : ZeroCommand()
+    data class LaunchEphemeralApp(val appQuery: String) : ZeroCommand()
+    object ShowImpactDashboard : ZeroCommand()
     object AuditSpying : ZeroCommand()
     object ShowAboutPhone : ZeroCommand()
     data class LaunchApp(val appQuery: String) : ZeroCommand()
@@ -81,6 +84,23 @@ object CommandParser {
         // 7. SYSTEM: ABOUT PHONE
         if (lower.contains("about phone") || lower.contains("system info") || lower == "/about") {
             return ZeroCommand.ShowAboutPhone
+        }
+
+        // 7b. PRIVACY & BATTERY: IMPACT DASHBOARD / STATS
+        if (lower.contains("impact") || lower.contains("stats") || lower.contains("dashboard") || lower.contains("privacy score") || lower == "/stats") {
+            return ZeroCommand.ShowImpactDashboard
+        }
+
+        // 7c. ATTENTION: CALM DIGEST
+        if (lower.contains("calm digest") || lower.contains("digest") || lower.contains("calm mode") || lower == "/digest") {
+            val isOff = lower.contains("off") || lower.contains("disable") || lower.contains("stop")
+            return ZeroCommand.ToggleCalmDigest(!isOff)
+        }
+
+        // 7d. SANDBOX: EPHEMERAL APP LAUNCH
+        if (lower.startsWith("ephemeral") || lower.startsWith("disposable") || lower.startsWith("temp app") || lower.startsWith("/ephemeral")) {
+            val target = lower.replace(Regex("^(ephemeral|disposable|temp app|/ephemeral)\\s*"), "").trim()
+            return ZeroCommand.LaunchEphemeralApp(target)
         }
 
         // 8. KERNEL FIREWALL: CUT / RESTORE MOBILE DATA
