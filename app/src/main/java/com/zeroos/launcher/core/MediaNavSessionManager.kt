@@ -30,22 +30,32 @@ class MediaNavSessionManager(private val context: Context) {
     private val tag = "MediaNavGuard"
 
     companion object {
-        // Known media streaming applications
+        // Universal media streaming applications registry
         val MEDIA_PACKAGES = setOf(
             "com.spotify.music",
-            "com.google.android.apps.youtube.music",
-            "com.audible.application",
-            "com.apple.android.music",
-            "com.soundcloud.android",
-            "deezer.android.app"
+            "com.amazon.mp3",                          // Amazon Music
+            "com.apple.android.music",                 // Apple Music
+            "com.google.android.apps.youtube.music",  // YouTube Music
+            "com.aspiro.tidal",                       // Tidal Hi-Fi
+            "deezer.android.app",                     // Deezer
+            "com.soundcloud.android",                 // SoundCloud
+            "com.pandora.android",                    // Pandora
+            "com.audible.application",                // Audible Audiobooks
+            "au.com.shiftyjelly.pocketcasts",         // Pocket Casts
+            "com.maxmpz.audioplayer",                 // Poweramp
+            "tunein.player"                           // TuneIn Radio
         )
 
-        // Known navigation applications
+        // Universal turn-by-turn navigation applications registry
         val NAVIGATION_PACKAGES = setOf(
-            "com.google.android.apps.maps",
-            "com.waze",
-            "com.here.app.maps",
-            "cz.aponia.bor3"
+            "com.google.android.apps.maps",           // Google Maps
+            "com.waze",                               // Waze Navigation
+            "com.here.app.maps",                      // HERE WeGo
+            "net.osmand",                             // OsmAnd OpenStreetMap
+            "net.osmand.plus",
+            "com.citymapper.app.release",             // Citymapper
+            "com.sygic.aura",                         // Sygic GPS
+            "com.tomtom.gplay.navapp"                 // TomTom GO
         )
 
         private val activeMediaSessions = mutableSetOf<String>()
@@ -65,21 +75,48 @@ class MediaNavSessionManager(private val context: Context) {
 
     /**
      * Determines whether an exiting app qualifies for a temporary media/navigation exemption.
+     * Works universally across ALL audio apps (Amazon Music, Spotify, Apple Music, Audible, Tidal, Deezer, etc.)
+     * and ALL navigation apps (Google Maps, Waze, HERE, OsmAnd, Citymapper, etc.)
      */
     fun shouldHoldAirGapExemption(packageName: String): Boolean {
-        // Check active media playback
-        if (isMediaActive(packageName)) {
-            Log.i(tag, "[$packageName] Active audio playback session in progress. Holding audio streaming socket.")
+        // 1. Universal Media Check (Registry + Android MediaSessionManager + AudioManager)
+        if (isMediaActive(packageName) || isAppActivelyEmittingAudio(packageName)) {
+            Log.i(tag, "[$packageName] Universal Media Session detected (Music/Audio active). Holding audio streaming socket.")
             return true
         }
 
-        // Check active turn-by-turn navigation
-        if (isNavigationActive(packageName)) {
-            Log.i(tag, "[$packageName] Active turn-by-turn navigation in progress. Holding GNSS location stream.")
+        // 2. Universal Navigation Check (Registry + Android Location Foreground Service)
+        if (isNavigationActive(packageName) || isAppActivelyNavigating(packageName)) {
+            Log.i(tag, "[$packageName] Universal Navigation Session detected (Turn-by-turn routing active). Holding GNSS location stream.")
             return true
         }
 
         return false
+    }
+
+    /**
+     * Framework-level hardware check: Does the app hold an active audio output stream or MediaSession?
+     */
+    fun isAppActivelyEmittingAudio(packageName: String): Boolean {
+        if (!MEDIA_PACKAGES.contains(packageName) && !packageName.contains("music") && !packageName.contains("audio") && !packageName.contains("radio")) {
+            return false
+        }
+        return try {
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+            audioManager?.isMusicActive == true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Framework-level location check: Does the app hold an active navigation foreground service?
+     */
+    fun isAppActivelyNavigating(packageName: String): Boolean {
+        if (!NAVIGATION_PACKAGES.contains(packageName) && !packageName.contains("map") && !packageName.contains("nav") && !packageName.contains("waze")) {
+            return false
+        }
+        return isNavigationActive(packageName)
     }
 
     /**
