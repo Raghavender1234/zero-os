@@ -806,6 +806,114 @@ HTML_TEMPLATE = """
     .chat-bubble.left { background: #1e2636; color: #e2e8f0; align-self: flex-start; border-bottom-left-radius: 4px; }
     .chat-bubble.right { background: #10b981; color: #000; font-weight: 500; align-self: flex-end; border-bottom-right-radius: 4px; }
 
+    /* SYSTEM SETTINGS & APPS UI */
+    .settings-card {
+      background: #141a24;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .settings-card:hover {
+      background: #1c2433;
+      transform: translateY(-1px);
+    }
+    .settings-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.05rem;
+      flex-shrink: 0;
+    }
+    .settings-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+    }
+    .settings-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .settings-sub {
+      font-size: 0.68rem;
+      color: #94a3b8;
+      line-height: 1.3;
+    }
+    .dialpad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 210px;
+      margin: 0 auto;
+    }
+    .dial-key {
+      background: #131923;
+      border-radius: 50%;
+      width: 58px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: #fff;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      margin: 0 auto;
+      transition: background 0.1s;
+    }
+    .dial-key:hover { background: #202b3d; }
+    .call-btn-green {
+      background: #10b981;
+      color: #000;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .call-btn-del {
+      background: #232c3d;
+      color: #cbd5e1;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .camera-lens-view {
+      width: 100%;
+      flex: 1;
+      background: #090d14;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin: 8px 0;
+    }
+    .camera-shutter-btn {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: #fff;
+      border: 4px solid #141923;
+      box-shadow: 0 0 0 2px #fff;
+      cursor: pointer;
+    }
+
     /* TOAST */
     .android-toast {
       position: absolute;
@@ -898,7 +1006,7 @@ HTML_TEMPLATE = """
         <div class="oled-screen" id="oledScreen">
 
           <!-- ANDROID STATUS BAR (Click or Swipe Down opens standard Notification Center) -->
-          <div class="android-status-bar" onclick="openNotificationShade()" title="Swipe down or click to open Notification Center">
+          <div class="android-status-bar" onclick="toggleNotificationShade()" title="Click to toggle Notification Center">
             <div class="status-left">
               <span id="statusClock">11:28</span>
               <span id="statusTorch" style="display:none;">🔦</span>
@@ -923,8 +1031,8 @@ HTML_TEMPLATE = """
                 <div class="oneui-date-line">Wednesday, October 29 · 🔋 88%</div>
               </div>
               <div class="oneui-header-icons">
-                <button class="oneui-icon-btn" onclick="quickRun('about phone')" title="Settings">⚙️</button>
-                <button class="oneui-icon-btn" onclick="closeNotificationShade()" title="Close Notification Shade">✕</button>
+                <button class="oneui-icon-btn" onclick="quickRun('reboot')" title="Power Menu">⏻</button>
+                <button class="oneui-icon-btn" onclick="launchSettingsFromShade()" title="Settings">⚙️</button>
               </div>
             </div>
 
@@ -1194,7 +1302,7 @@ HTML_TEMPLATE = """
                 <div class="app-label">Maps</div>
               </div>
 
-              <div class="app-icon-item" onclick="quickRun('about phone')">
+              <div class="app-icon-item" onclick="launchForegroundApp('settings')">
                 <div class="app-icon-shape" id="icon-settings"></div>
                 <div class="app-label">Settings</div>
               </div>
@@ -1403,6 +1511,32 @@ HTML_TEMPLATE = """
       document.getElementById('notificationShade').classList.remove('open');
     }
 
+    function toggleNotificationShade() {
+      const shade = document.getElementById('notificationShade');
+      if (shade.classList.contains('open')) {
+        closeNotificationShade();
+      } else {
+        openNotificationShade();
+      }
+    }
+
+    function launchSettingsFromShade() {
+      closeNotificationShade();
+      launchForegroundApp('settings');
+    }
+
+    let currentDial = "";
+    function appendDial(digit) {
+      currentDial += digit;
+      const el = document.getElementById('dialDisplay');
+      if (el) el.innerText = currentDial;
+    }
+    function clearDial() {
+      currentDial = currentDial.slice(0, -1);
+      const el = document.getElementById('dialDisplay');
+      if (el) el.innerText = currentDial || "Enter Number";
+    }
+
     function renderUI() {
       // 1. Status Bar
       document.getElementById('statusTorch').style.display = state.is_torch_on ? 'inline-block' : 'none';
@@ -1570,6 +1704,96 @@ HTML_TEMPLATE = """
             <div style="font-size:0.75rem; color:#cbd5e1; margin-top:8px;">Glacier national park at dawn. Zero battery wasted.</div>
           </div>
         `;
+      } else if (appKey === 'settings') {
+        body.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:8px; width:100%; height:100%; overflow-y:auto; padding-right:2px;">
+            <div style="font-size:1.2rem; font-weight:300; color:#fff; padding:2px 0 6px 0;">ZeroOS Settings</div>
+            
+            <div class="settings-card" onclick="toggleFeature('nokia')">
+              <div class="settings-icon" style="background:#10b981; color:#000;">🔋</div>
+              <div class="settings-content">
+                <div class="settings-title">Battery & Longevity</div>
+                <div class="settings-sub">${state.battery_days_remaining} Days Remaining · Nokia Mode: <b>${state.is_nokia_mode ? 'ON (60Hz)' : 'OFF (120Hz)'}</b></div>
+              </div>
+            </div>
+
+            <div class="settings-card" onclick="toggleFeature('airgap')">
+              <div class="settings-icon" style="background:#3b82f6; color:#fff;">🛡️</div>
+              <div class="settings-content">
+                <div class="settings-title">Kernel Air-Gap & Permissions</div>
+                <div class="settings-sub">Background Killer: <b>${state.auto_airgap_enabled ? 'Active (0 B/s)' : 'Paused'}</b> · Ephemeral Session Guard Active</div>
+              </div>
+            </div>
+
+            <div class="settings-card" onclick="toggleFeature('grayscale')">
+              <div class="settings-icon" style="background:#8b5cf6; color:#fff;">🎨</div>
+              <div class="settings-content">
+                <div class="settings-title">Display & OLED Palette</div>
+                <div class="settings-sub">Palette: <b>${(state.palette||'official').toUpperCase()}</b> · Daltonizer Grayscale: <b>${state.is_grayscale ? 'ACTIVE' : 'OFF'}</b></div>
+              </div>
+            </div>
+
+            <div class="settings-card" onclick="toggleFeature('digest')">
+              <div class="settings-icon" style="background:#f59e0b; color:#000;">🔕</div>
+              <div class="settings-content">
+                <div class="settings-title">Calm Notifications</div>
+                <div class="settings-sub">Batch Digest: <b>${state.calm_digest_enabled ? 'Active (Noise Silenced)' : 'Off'}</b> · Calls/SMS Priority Rings</div>
+              </div>
+            </div>
+
+            <div class="settings-card" onclick="toggleFeature('hotspot')">
+              <div class="settings-icon" style="background:#ec4899; color:#fff;">📶</div>
+              <div class="settings-content">
+                <div class="settings-title">Hotspot & Radios</div>
+                <div class="settings-sub">SSID: <b>${state.hotspot_ssid}</b> · Status: <b>${state.is_hotspot_on ? 'BROADCASTING (1 Device)' : 'OFF'}</b></div>
+              </div>
+            </div>
+
+            <div class="settings-card">
+              <div class="settings-icon" style="background:#06b6d4; color:#000;">🚗</div>
+              <div class="settings-content">
+                <div class="settings-title">Android Auto & Google Pay</div>
+                <div class="settings-sub">Car Projection Privileged Stub: <b>READY</b> · Bank NFC HCE Tap-to-Pay: <b>ACTIVE</b></div>
+              </div>
+            </div>
+
+            <div class="settings-card" onclick="quickRun('about phone')">
+              <div class="settings-icon" style="background:#475569; color:#fff;">📱</div>
+              <div class="settings-content">
+                <div class="settings-title">About ZeroPhone Pro</div>
+                <div class="settings-sub">ZeroOS AOSP 14 · Linux 5.10 Kernel · Relocked Titan M2 AVB</div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (appKey === 'phone') {
+        body.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; width:100%; height:100%; justify-content:center;">
+            <div style="font-size:1.35rem; font-weight:300; color:#fff; margin-bottom:14px; letter-spacing:1px; min-height:28px;" id="dialDisplay">Enter Number</div>
+            <div class="dialpad-grid">
+              ${[1,2,3,4,5,6,7,8,9,'*',0,'#'].map(n => `<div class="dial-key" onclick="appendDial('${n}')">${n}</div>`).join('')}
+            </div>
+            <div style="margin-top:14px; display:flex; gap:14px; align-items:center;">
+              <button class="call-btn-green" onclick="showToast('📞 Dialing encrypted voice...')">📞 Call</button>
+              <button class="call-btn-del" onclick="clearDial()">⌫</button>
+            </div>
+          </div>
+        `;
+      } else if (appKey === 'camera') {
+        body.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:space-between; width:100%; height:100%;">
+            <div style="font-size:0.72rem; color:#94a3b8; text-align:center;">Raw Sensor Viewfinder · Zero Cloud Telemetry</div>
+            <div class="camera-lens-view">
+              <div style="width:40px; height:40px; border:1px dashed rgba(255,255,255,0.25); border-radius:50%; margin-bottom:8px;"></div>
+              <div style="color:#64748b; font-size:0.75rem;">[Live Sony IMX Sensor Feed]</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:24px; padding:6px 0 10px 0;">
+              <div style="width:34px; height:34px; border-radius:50%; background:#1e293b;"></div>
+              <button class="camera-shutter-btn" onclick="showToast('📸 Photo captured to encrypted storage')"></button>
+              <div style="width:34px; height:34px; border-radius:50%; background:#1e293b;"></div>
+            </div>
+          </div>
+        `;
       } else {
         body.innerHTML = `
           <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; text-align:center; padding:20px;">
@@ -1657,6 +1881,14 @@ HTML_TEMPLATE = """
 
     // Auto-refresh clock
     loadState();
+
+    // Tap outside shade or bottom drag handle to close naturally like stock Android
+    const shadeEl = document.getElementById('notificationShade');
+    shadeEl.addEventListener('click', function(e) {
+      if (e.target === this || e.target.classList.contains('oneui-bottom-handle') || e.target.classList.contains('oneui-drag-pill')) {
+        closeNotificationShade();
+      }
+    });
     setInterval(() => {
       const now = new Date();
       const timeStr = now.toTimeString().slice(0, 5);
