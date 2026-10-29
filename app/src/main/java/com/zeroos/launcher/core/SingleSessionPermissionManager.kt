@@ -39,19 +39,64 @@ class SingleSessionPermissionManager(private val context: Context) {
         "android.permission.ACCESS_COARSE_LOCATION"
     )
 
-    /**
-     * Called when an app enters the foreground.
-     * Establishes a temporary, single-session permission grant for active user interaction.
-     */
-    fun onAppForeground(packageName: String, uid: Int) {
-        Log.i(tag, "[$packageName] Entering foreground: Establishing Single-Session Ephemeral Grant.")
-        
-        // Grant temporary AppOps access strictly for active foreground window
-        singleSessionAppOps.forEach { op ->
-            KernelShield.executeRootCommand("cmd appops set $packageName $op allow")
+    companion object {
+        val SOCIAL_MEDIA_PACKAGES = setOf(
+            "com.instagram.android",
+            "com.zhiliaoapp.musically", // TikTok
+            "com.whatsapp",
+            "com.facebook.katana",
+            "com.twitter.android",
+            "com.snapchat.android",
+            "com.google.android.youtube",
+            "com.reddit.frontpage"
+        )
+
+        private val hardMutedMics = mutableSetOf<String>()
+        private val hardMutedLocations = mutableSetOf<String>()
+        private val hardCutData = mutableSetOf<String>()
+
+        fun setMicHardMuted(packageName: String, muted: Boolean) {
+            if (muted) hardMutedMics.add(packageName) else hardMutedMics.remove(packageName)
         }
 
-        Log.i(tag, "[$packageName] Location & Mic granted for THIS ACTIVE SESSION ONLY.")
+        fun setSocialMediaMicHardMuted(muted: Boolean) {
+            if (muted) hardMutedMics.addAll(SOCIAL_MEDIA_PACKAGES) else hardMutedMics.removeAll(SOCIAL_MEDIA_PACKAGES)
+        }
+
+        fun setLocationHardMuted(packageName: String, muted: Boolean) {
+            if (muted) hardMutedLocations.add(packageName) else hardMutedLocations.remove(packageName)
+        }
+
+        fun setDataHardCut(packageName: String, cut: Boolean) {
+            if (cut) hardCutData.add(packageName) else hardCutData.remove(packageName)
+        }
+
+        fun isMicHardMuted(packageName: String): Boolean = hardMutedMics.contains(packageName)
+        fun isLocationHardMuted(packageName: String): Boolean = hardMutedLocations.contains(packageName)
+        fun isDataHardCut(packageName: String): Boolean = hardCutData.contains(packageName)
+    }
+
+    /**
+     * Called when an app enters the foreground.
+     * Establishes a temporary, single-session permission grant for active user interaction,
+     * UNLESS the user has explicitly commanded a hard-mute / cutoff for that app or category.
+     */
+    fun onAppForeground(packageName: String, uid: Int) {
+        Log.i(tag, "[$packageName] Entering foreground: Single-Session Ephemeral Check.")
+        
+        singleSessionAppOps.forEach { op ->
+            if (op == "RECORD_AUDIO" && isMicHardMuted(packageName)) {
+                Log.w(tag, "[$packageName] Microphone is HARD-MUTED by user command. Denying access even during active foreground session.")
+                KernelShield.executeRootCommand("cmd appops set $packageName RECORD_AUDIO deny")
+            } else if ((op.contains("LOCATION")) && isLocationHardMuted(packageName)) {
+                Log.w(tag, "[$packageName] Location is HARD-MUTED by user command. Denying access even during active foreground session.")
+                KernelShield.executeRootCommand("cmd appops set $packageName $op deny")
+            } else {
+                KernelShield.executeRootCommand("cmd appops set $packageName $op allow")
+            }
+        }
+
+        Log.i(tag, "[$packageName] Single-session permissions configured silently without intrusive UI banners.")
     }
 
     /**

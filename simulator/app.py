@@ -765,46 +765,6 @@ HTML_TEMPLATE = """
     .app-header-title { font-size: 0.92rem; font-weight: 600; color: #fff; }
     .badge-ephemeral { font-size: 0.62rem; font-weight: 700; padding: 2px 7px; border-radius: 8px; background: #dc2626; color: #fff; }
     .badge-normal-airgap { font-size: 0.62rem; font-weight: 700; padding: 2px 7px; border-radius: 8px; background: #059669; color: #fff; }
-    .session-permission-banner {
-      background: linear-gradient(90deg, rgba(16, 185, 129, 0.16) 0%, rgba(59, 130, 246, 0.12) 100%);
-      border-bottom: 1px solid rgba(16, 185, 129, 0.28);
-      padding: 10px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-    .session-permission-header {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
-    .live-pulse-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #34d399;
-      box-shadow: 0 0 8px #34d399;
-      animation: pulseDot 1.4s infinite;
-    }
-    @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
-    .session-permission-tag {
-      font-size: 0.65rem;
-      font-weight: 700;
-      color: #34d399;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-    .session-permission-rule {
-      font-size: 0.72rem;
-      color: #f1f5f9;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .session-permission-sub {
-      font-size: 0.65rem;
-      color: #94a3b8;
-    }
     .btn-close-app {
       background: #232c3d;
       color: #cbd5e1;
@@ -1274,28 +1234,14 @@ HTML_TEMPLATE = """
                   <span id="appHeaderBadge" class="badge-normal-airgap">AIR-GAP PROTECTED</span>
                 </div>
               </div>
-              <button class="btn-close-app" onclick="closeActiveApp()">Close & Revoke</button>
-            </div>
-
-            <!-- MANDATORY SINGLE-SESSION PERMISSION BANNER (PC/Browser Allow This Time Only) -->
-            <div class="session-permission-banner">
-              <div class="session-permission-header">
-                <div class="live-pulse-dot"></div>
-                <span class="session-permission-tag">PC-Style Mandatory Session Policy</span>
-              </div>
-              <div class="session-permission-rule">
-                <span>📍 Location & 🎙️ Mic: <b>Granted for THIS ACTIVE SESSION ONLY</b></span>
-              </div>
-              <div class="session-permission-sub">
-                ⚡ Automatically turns OFF & wipes permissions the second you close or swipe home.
-              </div>
+              <button class="btn-close-app" onclick="closeActiveApp()">Close & Exit</button>
             </div>
             
             <div class="app-window-body" id="appWindowBody"></div>
 
             <div class="app-window-footer">
               <button class="swipe-home-btn" onclick="closeActiveApp()">
-                <span>🔒 Swipe Home to Cut Network & Revoke Mic/Location</span>
+                <span>🔒 Swipe Home to Exit & Sever Network</span>
               </button>
               <div class="gesture-bar-container" onclick="closeActiveApp()">
                 <div class="gesture-bar"></div>
@@ -1535,12 +1481,25 @@ HTML_TEMPLATE = """
       document.getElementById('appHeaderTitle').innerText = appName;
 
       const badge = document.getElementById('appHeaderBadge');
-      if (isEphemeral) {
+      const shield = (state.app_shields && state.app_shields[appKey]) || {};
+      const isMicHardMuted = shield.mic_hard_muted || shield.mic_muted;
+      const isDataHardCut = shield.data_hard_cut || shield.data_cut;
+
+      if (isMicHardMuted && isDataHardCut) {
         badge.className = 'badge-ephemeral';
-        badge.innerText = '🛡️ EPHEMERAL RAM (WIPED ON EXIT)';
+        badge.innerText = '🚫 DATA CUT & MIC MUTED';
+      } else if (isMicHardMuted) {
+        badge.className = 'badge-ephemeral';
+        badge.innerText = '🎙️ MIC HARD-MUTED';
+      } else if (isDataHardCut) {
+        badge.className = 'badge-ephemeral';
+        badge.innerText = '⚡ DATA HARD-CUT';
+      } else if (isEphemeral) {
+        badge.className = 'badge-ephemeral';
+        badge.innerText = '🛡️ EPHEMERAL RAM';
       } else {
         badge.className = 'badge-normal-airgap';
-        badge.innerText = 'AUTOMATIC AIR-GAP ACTIVE';
+        badge.innerText = 'AIR-GAP PROTECTED';
       }
 
       const body = document.getElementById('appWindowBody');
@@ -1674,7 +1633,7 @@ def get_state():
 
 @app.route("/api/toggle_feature", methods=["POST"])
 def toggle_feature():
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     feat = data.get("feature")
 
     if feat == "hotspot":
@@ -1736,7 +1695,7 @@ def toggle_feature():
 
 @app.route("/api/launch_app", methods=["POST"])
 def launch_app():
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     app_key = data.get("app_key")
     is_ephemeral = data.get("is_ephemeral", False)
 
@@ -1744,14 +1703,35 @@ def launch_app():
     STATE["is_ephemeral"] = is_ephemeral
 
     app_name = app_key.capitalize() if app_key else "App"
-    STATE["kernel_logs"].append(f"[AutoAirGap] '{app_name}' FOREGROUND: Restored network sockets & camera/mic registers")
-    STATE["kernel_logs"].append(f"[SingleSessionPerm] Mandatory PC-style session grant: Location & Mic active for THIS FOREGROUND SESSION ONLY")
-    
-    if is_ephemeral:
-        STATE["kernel_logs"].append(f"[EphemeralSandbox] Mounted tmpfs RAM overlay on /data/data/{app_key}. Session is disposable.")
-        msg = f"🛡️ Opened {app_name} in Ephemeral RAM Sandbox (Location & Mic auto-revoked on exit)."
+    shield = STATE["app_shields"].get(app_key, {})
+    is_mic_hard_muted = shield.get("mic_hard_muted", False) or shield.get("mic_muted", False)
+    is_data_hard_cut = shield.get("data_hard_cut", False) or shield.get("data_cut", False)
+
+    # 1. Data check
+    if is_data_hard_cut:
+        STATE["kernel_logs"].append(f"[AutoAirGap] Policy Check: Mobile data is HARD-CUT for 'com.{app_key}'. Netfilter iptables DROP preserved in foreground!")
     else:
-        msg = f"Opened {app_name}. Location & Mic active for THIS SESSION ONLY (Auto-revoked on exit)."
+        STATE["kernel_logs"].append(f"[AutoAirGap] '{app_name}' FOREGROUND: Restored network sockets")
+
+    # 2. Mic / Sensor check (Respect user permanent command)
+    if is_mic_hard_muted:
+        STATE["kernel_logs"].append(f"[SingleSessionPerm] Policy Check: Microphone is HARD-MUTED for 'com.{app_key}'. Hardware register locked to silence even during active session!")
+        STATE["kernel_logs"].append(f"[AppOps] cmd appops set com.{app_key} RECORD_AUDIO deny")
+    else:
+        STATE["kernel_logs"].append(f"[SingleSessionPerm] Ephemeral session active for 'com.{app_key}'. Auto-revoked on exit.")
+
+    # 3. Message formatting
+    if is_mic_hard_muted and is_data_hard_cut:
+        msg = f"Opened {app_name}. (Data is CUT & Mic is MUTED per your command)."
+    elif is_mic_hard_muted:
+        msg = f"Opened {app_name}. (Microphone is HARD-MUTED per your command - 0 audio access)."
+    elif is_data_hard_cut:
+        msg = f"Opened {app_name}. (Data is HARD-CUT per your command - 0 B/s)."
+    elif is_ephemeral:
+        STATE["kernel_logs"].append(f"[EphemeralSandbox] Mounted tmpfs RAM overlay on /data/data/{app_key}. Session is disposable.")
+        msg = f"🛡️ Opened {app_name} in Ephemeral RAM Sandbox."
+    else:
+        msg = f"Opened {app_name}."
 
     return jsonify({"success": True, "message": msg, "state": STATE})
 
@@ -1797,7 +1777,7 @@ def clear_digest():
 
 @app.route("/api/command", methods=["POST"])
 def process_command():
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     raw_cmd = data.get("command", "").strip()
     lower = raw_cmd.lower()
 
@@ -1902,49 +1882,97 @@ def process_command():
                 break
         return launch_app_internal(target, is_ephemeral=True)
 
-    # CUT MIC FOR APPS
-    has_mic_word = any(w in lower for w in ["mic", "microphone", "audio", "listen"])
-    has_cut_word = any(w in lower for w in ["cut", "block", "kill", "stop", "disable", "mute"])
+    SOCIAL_MEDIA_APPS = ["instagram", "tiktok", "youtube", "whatsapp"]
+    ALL_SHIELD_APPS = list(STATE["app_shields"].keys())
+
+    # CUT / MUTE MIC FOR APPS (Supports specific apps, 'all social media', 'all apps')
+    has_mic_word = any(w in lower for w in ["mic", "microphone", "audio", "listen", "record"])
+    has_cut_word = any(w in lower for w in ["cut", "block", "kill", "stop", "disable", "mute", "turn off"])
     if has_mic_word and has_cut_word:
-        targets = [k for k in STATE["app_shields"].keys() if k in lower] or ["whatsapp"]
+        if "social" in lower:
+            targets = SOCIAL_MEDIA_APPS
+        elif "all" in lower or "everywhere" in lower:
+            targets = ALL_SHIELD_APPS
+        else:
+            targets = [k for k in STATE["app_shields"].keys() if k in lower] or ["whatsapp"]
+        
         for t in targets:
-            app_obj = STATE["app_shields"][t]
-            app_obj["mic_muted"] = True
-            STATE["kernel_logs"].append(f"[AppOps] cmd appops set {app_obj['package']} RECORD_AUDIO deny -> REGISTER LOCKED")
-            STATE["kernel_logs"].append("[AudioHAL] Fed digital silence (/dev/zero) to UID PCM audio stream.")
-        names = [STATE["app_shields"][t]["name"] for t in targets]
+            if t in STATE["app_shields"]:
+                app_obj = STATE["app_shields"][t]
+                app_obj["mic_muted"] = True
+                app_obj["mic_hard_muted"] = True
+                STATE["kernel_logs"].append(f"[PolicyStore] PERMANENT HARD-MUTE rule: {app_obj['package']}")
+                STATE["kernel_logs"].append(f"[AppOps] cmd appops set {app_obj['package']} RECORD_AUDIO deny")
+                STATE["kernel_logs"].append(f"[AudioHAL] Directing digital silence (/dev/zero) to UID PCM stream for {t}.")
+        names = [STATE["app_shields"][t]["name"] for t in targets if t in STATE["app_shields"]]
         return jsonify({
             "success": True,
-            "message": f"🎙️ Microphone hardware register LOCKED for: {', '.join(names)}. Audio feeds dead silence.",
+            "message": f"🎙️ Microphone PERMANENTLY MUTED for: {', '.join(names)}. Access is blocked even when opened in foreground.",
             "state": STATE
         })
 
     # RESTORE MIC FOR APPS
-    if has_mic_word and any(w in lower for w in ["unmute", "allow", "restore"]):
-        targets = [k for k in STATE["app_shields"].keys() if k in lower] or ["whatsapp"]
+    if has_mic_word and any(w in lower for w in ["unmute", "allow", "restore", "turn on", "enable"]):
+        if "social" in lower:
+            targets = SOCIAL_MEDIA_APPS
+        elif "all" in lower or "everywhere" in lower:
+            targets = ALL_SHIELD_APPS
+        else:
+            targets = [k for k in STATE["app_shields"].keys() if k in lower] or ["whatsapp"]
         for t in targets:
-            app_obj = STATE["app_shields"][t]
-            app_obj["mic_muted"] = False
-            STATE["kernel_logs"].append(f"[AppOps] cmd appops set {app_obj['package']} RECORD_AUDIO allow")
-        names = [STATE["app_shields"][t]["name"] for t in targets]
+            if t in STATE["app_shields"]:
+                app_obj = STATE["app_shields"][t]
+                app_obj["mic_muted"] = False
+                app_obj["mic_hard_muted"] = False
+                STATE["kernel_logs"].append(f"[AppOps] cmd appops set {app_obj['package']} RECORD_AUDIO allow -> Restored to Single-Session")
+        names = [STATE["app_shields"][t]["name"] for t in targets if t in STATE["app_shields"]]
         return jsonify({
             "success": True,
-            "message": f"🎙️ Microphone restored for: {', '.join(names)}.",
+            "message": f"🎙️ Microphone restored to automatic single-session for: {', '.join(names)}.",
             "state": STATE
         })
 
     # CUT DATA FOR APPS
     has_data_word = any(w in lower for w in ["data", "internet", "wifi", "cellular", "net"])
     if has_data_word and has_cut_word:
-        targets = [k for k in STATE["app_shields"].keys() if k in lower] or ["instagram", "tiktok"]
+        if "social" in lower:
+            targets = SOCIAL_MEDIA_APPS
+        elif "all" in lower or "everywhere" in lower:
+            targets = ALL_SHIELD_APPS
+        else:
+            targets = [k for k in STATE["app_shields"].keys() if k in lower] or ["instagram", "tiktok"]
         for t in targets:
-            app_obj = STATE["app_shields"][t]
-            app_obj["data_cut"] = True
-            STATE["kernel_logs"].append(f"[iptables] iptables -I OUTPUT -m owner --uid-owner {app_obj['package']} -j DROP")
-        names = [STATE["app_shields"][t]["name"] for t in targets]
+            if t in STATE["app_shields"]:
+                app_obj = STATE["app_shields"][t]
+                app_obj["data_cut"] = True
+                app_obj["data_hard_cut"] = True
+                STATE["kernel_logs"].append(f"[PolicyStore] PERMANENT HARD-CUT data rule: {app_obj['package']}")
+                STATE["kernel_logs"].append(f"[iptables] iptables -I OUTPUT -m owner --uid-owner {app_obj['package']} -j DROP")
+        names = [STATE["app_shields"][t]["name"] for t in targets if t in STATE["app_shields"]]
         return jsonify({
             "success": True,
-            "message": f"⚡ Data severed at kernel level for: {', '.join(names)}. Background draw = 0 B/s.",
+            "message": f"⚡ Internet severed permanently for: {', '.join(names)}. App will remain offline (0 B/s) even in foreground.",
+            "state": STATE
+        })
+
+    # RESTORE DATA FOR APPS
+    if has_data_word and any(w in lower for w in ["restore", "allow", "unblock", "turn on", "enable"]):
+        if "social" in lower:
+            targets = SOCIAL_MEDIA_APPS
+        elif "all" in lower or "everywhere" in lower:
+            targets = ALL_SHIELD_APPS
+        else:
+            targets = [k for k in STATE["app_shields"].keys() if k in lower] or ["instagram", "tiktok"]
+        for t in targets:
+            if t in STATE["app_shields"]:
+                app_obj = STATE["app_shields"][t]
+                app_obj["data_cut"] = False
+                app_obj["data_hard_cut"] = False
+                STATE["kernel_logs"].append(f"[iptables] iptables -D OUTPUT -m owner --uid-owner {app_obj['package']} -j DROP")
+        names = [STATE["app_shields"][t]["name"] for t in targets if t in STATE["app_shields"]]
+        return jsonify({
+            "success": True,
+            "message": f"⚡ Mobile data restored for: {', '.join(names)}.",
             "state": STATE
         })
 
@@ -1971,13 +1999,37 @@ def launch_app_internal(app_key, is_ephemeral=False):
     STATE["active_app"] = app_key
     STATE["is_ephemeral"] = is_ephemeral
     app_name = app_key.capitalize()
-    STATE["kernel_logs"].append(f"[AutoAirGap] '{app_name}' entering FOREGROUND: Restored network sockets & hardware")
-    STATE["kernel_logs"].append(f"[SingleSessionPerm] Mandatory PC-style session grant: Location & Mic active for THIS FOREGROUND SESSION ONLY")
-    if is_ephemeral:
-        STATE["kernel_logs"].append(f"[EphemeralSandbox] Mounted tmpfs RAM overlay on /data/data/{app_key}.")
-        msg = f"🛡️ Opened {app_name} in Ephemeral RAM Sandbox (Location & Mic auto-revoked on exit)."
+
+    shield = STATE["app_shields"].get(app_key, {})
+    is_mic_hard_muted = shield.get("mic_hard_muted", False) or shield.get("mic_muted", False)
+    is_data_hard_cut = shield.get("data_hard_cut", False) or shield.get("data_cut", False)
+
+    # 1. Data check
+    if is_data_hard_cut:
+        STATE["kernel_logs"].append(f"[AutoAirGap] Policy Check: Mobile data is HARD-CUT for 'com.{app_key}'. Netfilter iptables DROP preserved in foreground!")
     else:
-        msg = f"Opened {app_name}. Location & Mic active for THIS SESSION ONLY (Auto-revoked on exit)."
+        STATE["kernel_logs"].append(f"[AutoAirGap] '{app_name}' entering FOREGROUND: Restored network sockets")
+
+    # 2. Mic / Sensor check (Respect user permanent command)
+    if is_mic_hard_muted:
+        STATE["kernel_logs"].append(f"[SingleSessionPerm] Policy Check: Microphone is HARD-MUTED for 'com.{app_key}'. Hardware register locked to silence even during active session!")
+        STATE["kernel_logs"].append(f"[AppOps] cmd appops set com.{app_key} RECORD_AUDIO deny")
+    else:
+        STATE["kernel_logs"].append(f"[SingleSessionPerm] Ephemeral session active for 'com.{app_key}'. Auto-revoked on exit.")
+
+    # 3. Response message
+    if is_mic_hard_muted and is_data_hard_cut:
+        msg = f"Opened {app_name}. (Data is CUT & Mic is MUTED per your command)."
+    elif is_mic_hard_muted:
+        msg = f"Opened {app_name}. (Microphone is HARD-MUTED per your command - 0 audio access)."
+    elif is_data_hard_cut:
+        msg = f"Opened {app_name}. (Data is HARD-CUT per your command - 0 B/s)."
+    elif is_ephemeral:
+        STATE["kernel_logs"].append(f"[EphemeralSandbox] Mounted tmpfs RAM overlay on /data/data/{app_key}.")
+        msg = f"🛡️ Opened {app_name} in Ephemeral RAM Sandbox."
+    else:
+        msg = f"Opened {app_name}."
+
     return jsonify({"success": True, "message": msg, "state": STATE})
 
 if __name__ == "__main__":

@@ -149,6 +149,9 @@ object CommandParser {
         return ZeroCommand.LaunchApp(text)
     }
 
+    val SOCIAL_APPS = listOf("instagram", "tiktok", "whatsapp", "youtube", "facebook", "twitter", "snapchat", "reddit")
+    val ALL_APPS = listOf("whatsapp", "instagram", "tiktok", "youtube", "monzo", "chrome")
+
     private fun extractAppTargets(text: String, prefixes: List<String>): List<String> {
         var clean = text
         for (prefix in prefixes) {
@@ -159,11 +162,21 @@ object CommandParser {
             }
         }
 
+        val lowerClean = clean.lowercase(Locale.ROOT)
+        if (lowerClean.contains("social")) {
+            return SOCIAL_APPS
+        }
+        if (lowerClean == "all" || lowerClean.contains("all app") || lowerClean.contains("everywhere") || lowerClean.contains("every app")) {
+            return ALL_APPS
+        }
+
         // Clean out words like "apps", "app"
         clean = clean.replace(Regex("\\bapps?\\b"), "").trim()
 
-        return clean.split(APP_SPLIT_REGEX)
+        val parsed = clean.split(APP_SPLIT_REGEX)
             .map { it.trim() }
             .filter { it.isNotEmpty() }
+
+        return if (parsed.isEmpty()) listOf("whatsapp") else parsed
     }
 }

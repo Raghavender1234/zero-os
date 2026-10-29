@@ -37,12 +37,18 @@ class AutoAirGapManager(private val context: Context) {
         try {
             val uid = getAppUid(packageName)
             if (uid > 0) {
-                Log.i(tag, "App '$packageName' (UID $uid) entering FOREGROUND: Restoring data & hardware")
-                // Flush iptables drop rule for this app
-                KernelShield.executeRootCommand("iptables -D OUTPUT -m owner --uid-owner $uid -j DROP || true")
-                KernelShield.executeRootCommand("ip6tables -D OUTPUT -m owner --uid-owner $uid -j DROP || true")
+                Log.i(tag, "App '$packageName' (UID $uid) entering FOREGROUND")
+                
+                // If user commanded permanent data cut, do NOT restore sockets
+                if (SingleSessionPermissionManager.isDataHardCut(packageName)) {
+                    Log.w(tag, "App '$packageName' data is HARD-CUT by user command. Maintaining iptables DROP rule.")
+                } else {
+                    // Flush iptables drop rule for this app
+                    KernelShield.executeRootCommand("iptables -D OUTPUT -m owner --uid-owner $uid -j DROP || true")
+                    KernelShield.executeRootCommand("ip6tables -D OUTPUT -m owner --uid-owner $uid -j DROP || true")
+                }
 
-                // Single-Session Permission Grant (PC-style: Active strictly while in foreground)
+                // Single-Session Permission Grant (PC-style: Active strictly while in foreground, respecting user hard-mutes)
                 SingleSessionPermissionManager(context).onAppForeground(packageName, uid)
             }
         } catch (e: Exception) {
