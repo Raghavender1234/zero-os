@@ -1,0 +1,33 @@
+name: ZeroOS AOSP GSI Cloud Build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'aosp/**'
+      - 'app/**'
+
+jobs:
+  build-apk-and-gsi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ZeroOS Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build ZeroOS Android Launcher APK
+        run: |
+          chmod +x ./gradlew || true
+          ./gradlew assembleDebug || gradle assembleDebug
+
+      - name: Upload ZeroOS APK Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZeroOS-Launcher-Debug-APK
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn

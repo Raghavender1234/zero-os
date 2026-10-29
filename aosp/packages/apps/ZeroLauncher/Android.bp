@@ -1,0 +1,40 @@
+// ZeroOS System Privileged Shell Blueprint (Soong)
+android_app {
+    name: "ZeroLauncher",
+    platform_apis: true,
+    certificate: "platform",
+    privileged: true,
+    system_ext_specific: false,
+
+    srcs: [
+        "src/main/java/**/*.kt",
+    ],
+
+    resource_dirs: [
+        "src/main/res",
+    ],
+
+    manifest: "src/main/AndroidManifest.xml",
+
+    static_libs: [
+        "androidx.compose.ui_ui",
+        "androidx.compose.foundation_foundation",
+        "androidx.compose.material3_material3",
+        "androidx.activity_activity-compose",
+        "kotlinx-coroutines-android",
+    ],
+
+    optimize: {
+        enabled: true,
+        shrink_resources: true,
+    },
+
+    required: ["privapp-permissions-zeroos.xml"],
+}
+
+prebuilt_etc {
+    name: "privapp-permissions-zeroos.xml",
+    sub_dir: "permissions",
+    src: "privapp-permissions-zeroos.xml",
+    filename_from_src: true,
+}

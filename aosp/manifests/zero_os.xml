@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+    <!-- ZeroOS AOSP 14.0 Manifest -->
+    <remote name="aosp"
+            fetch="https://android.googlesource.com"
+            review="android-review.googlesource.com"
+            revision="refs/tags/android-14.0.0_r50" />
+
+    <remote name="lineage"
+            fetch="https://github.com/LineageOS"
+            revision="refs/heads/lineage-21.0" />
+
+    <remote name="zero"
+            fetch="https://github.com/brreddy16"
+            revision="main" />
+
+    <!-- AOSP GSI & Core Framework Overlays -->
+    <project path="device/zero/zero_arm64" name="device_zero_arm64" remote="zero" />
+    <project path="packages/apps/ZeroLauncher" name="zero_launcher" remote="zero" />
+
+    <!-- Core LineageOS HAL & Hardware Interfaces (Project Treble GSI Base) -->
+    <project path="hardware/lineage/interfaces" name="android_hardware_lineage_interfaces" remote="lineage" />
+
+</manifest>
