@@ -15,15 +15,16 @@ STATE = {
     "is_grayscale": False,
     "is_micro_window": False,
     "is_nokia_mode": False,
+    "is_mic_killed": False,
     "auto_airgap_enabled": True,  # Automatic zero-leak background killer
     "active_app": None,           # Currently running foreground app (null = Home)
     "is_ephemeral": False,        # Whether active app is in disposable RAM sandbox
-    "current_screen": "home",     # "home" or "notifications"
     "palette": "official",        # official, monochrome, amber, emerald, cyan
     "screen_refresh_hz": 120,
+    "brightness": 85,
     "battery_percent": 88,
     "battery_days_remaining": 4.2,
-    "calm_digest_enabled": True,
+    "calm_digest_enabled": true if hasattr(sys, 'mock') else True,
     "calm_digest_items": [
         {"id": 1, "app": "Instagram", "title": "Social Update", "desc": "alex_99 and 4 others liked your story", "time": "18m ago"},
         {"id": 2, "app": "TikTok", "title": "Recommendation", "desc": "Trending sound: 'Midnight Beats' in your area", "time": "45m ago"},
@@ -82,7 +83,7 @@ STATE = {
         "[0.042100] Android Runtime (ART) initialized. Dalvik VM ready",
         "[0.120500] Netfilter iptables ready. Stealth FCM Push Bridge: ACTIVE",
         "[0.840000] AutoAirGapManager registered. Zero-leak background killer armed",
-        "[1.020000] SystemUI online. Pure OLED Home & Notification Center ready"
+        "[1.020000] SystemUI online. Standard Android pull-down notification center ready."
     ]
 }
 
@@ -124,7 +125,7 @@ HTML_TEMPLATE = """
 
     .top-header {
       text-align: center;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
     }
     .top-header h1 {
       font-size: 1.6rem;
@@ -151,42 +152,7 @@ HTML_TEMPLATE = """
       flex-wrap: wrap;
     }
 
-    /* VIEW SWITCHER TABS (Above the Phone) */
-    .view-switcher-bar {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 14px;
-      background: #111622;
-      padding: 5px;
-      border-radius: 20px;
-      border: 1px solid #1f2838;
-      width: 100%;
-      max-width: 380px;
-    }
-    .view-switch-btn {
-      flex: 1;
-      padding: 8px 12px;
-      border-radius: 16px;
-      border: none;
-      font-size: 0.78rem;
-      font-weight: 600;
-      cursor: pointer;
-      background: transparent;
-      color: #94a3b8;
-      transition: background 0.2s, color 0.2s;
-    }
-    .view-switch-btn.active {
-      background: var(--android-primary);
-      color: #0c0f14;
-    }
-
     /* REALISTIC ANDROID PHONE HARDWARE */
-    .phone-column {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
     .phone-container {
       position: relative;
     }
@@ -258,10 +224,10 @@ HTML_TEMPLATE = """
       background: #000;
       border: 1.5px solid #14171d;
       border-radius: 50%;
-      z-index: 100;
+      z-index: 110;
     }
 
-    /* 1. STATUS BAR */
+    /* 1. STATUS BAR (Click or Swipe Down to open standard Android Notification Center) */
     .android-status-bar {
       height: 38px;
       padding: 0 18px;
@@ -271,15 +237,251 @@ HTML_TEMPLATE = """
       font-size: 0.72rem;
       font-weight: 500;
       color: #cbd5e1;
-      z-index: 90;
+      z-index: 95;
       background: transparent;
       cursor: pointer;
+      transition: background 0.15s;
+    }
+    .android-status-bar:hover {
+      background: rgba(255, 255, 255, 0.05);
     }
     .status-left { display: flex; align-items: center; gap: 6px; }
     .status-right { display: flex; align-items: center; gap: 7px; }
 
-    /* SCREEN 1: CLEAN HOME SCREEN */
-    .screen-home {
+    /* ========================================================= */
+    /* STANDARD ANDROID NOTIFICATION SHADE (PULLS DOWN OVER HOME)*/
+    /* ========================================================= */
+    .android-notification-shade {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(13, 17, 24, 0.98);
+      backdrop-filter: blur(25px);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      padding: 44px 16px 14px 16px;
+      transform: translateY(-100%);
+      transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .android-notification-shade::-webkit-scrollbar { display: none; }
+    .android-notification-shade.open {
+      transform: translateY(0);
+    }
+
+    /* Shade Top Clock & Battery Bar */
+    .shade-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 0 4px;
+    }
+    .shade-time-clock {
+      font-size: 1.8rem;
+      font-weight: 400;
+      color: #ffffff;
+      line-height: 1;
+    }
+    .shade-date-line {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 3px;
+    }
+    .shade-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn-shade-close {
+      background: #1e2636;
+      border: 1px solid #2d384c;
+      color: #cbd5e1;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .btn-shade-close:hover { background: #283348; color: #fff; }
+
+    /* BRIGHTNESS SLIDER (Standard Android Material You) */
+    .brightness-slider-container {
+      background: #1b2230;
+      border-radius: 20px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .brightness-icon { font-size: 0.9rem; color: #94a3b8; }
+    .brightness-slider {
+      flex: 1;
+      accent-color: var(--android-primary);
+      cursor: pointer;
+    }
+
+    /* 4x2 QUICK SETTINGS TILES GRID (Material You Pill Buttons) */
+    .qs-tiles-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .qs-pill-button {
+      background: #1c2331;
+      border: 1px solid #273245;
+      border-radius: 18px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: background 0.18s, border-color 0.18s, transform 0.08s;
+    }
+    .qs-pill-button:active { transform: scale(0.96); }
+    .qs-pill-button.active {
+      background: var(--android-primary);
+      border-color: #669df6;
+      color: #0c0f14;
+    }
+    .qs-pill-button.active .qs-btn-title { color: #0c0f14; font-weight: 700; }
+    .qs-pill-button.active .qs-btn-sub { color: #1e293b; font-weight: 600; }
+    .qs-pill-button.active .qs-btn-icon { background: rgba(0,0,0,0.15); color: #000; }
+
+    .qs-btn-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #283244;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+    .qs-btn-info {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .qs-btn-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      white-space: nowrap;
+    }
+    .qs-btn-sub {
+      font-size: 0.65rem;
+      color: #94a3b8;
+      white-space: nowrap;
+      margin-top: 1px;
+    }
+
+    /* NOTIFICATION STREAM IN SHADE */
+    .shade-notifications-stream {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .stream-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      padding: 0 4px;
+    }
+    .stream-header-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .btn-clear-notifications {
+      background: transparent;
+      border: none;
+      color: #a8c7fa;
+      font-size: 0.72rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* Notification Cards */
+    .android-notif-card {
+      background: #161c27;
+      border: 1px solid #232d3e;
+      border-radius: 16px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .notif-app-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+      background: #1f2736;
+    }
+    .notif-card-body { flex: 1; overflow: hidden; }
+    .notif-card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+    .notif-card-appname { font-size: 0.72rem; font-weight: 700; color: #a8c7fa; }
+    .notif-card-time { font-size: 0.65rem; color: #64748b; }
+    .notif-card-text { font-size: 0.78rem; color: #e2e8f0; line-height: 1.35; }
+    .notif-card-action-btn {
+      margin-top: 8px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      padding: 5px 12px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Shade Dismiss Pill */
+    .shade-bottom-pill {
+      height: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      margin-top: auto;
+    }
+    .shade-pill-handle {
+      width: 60px;
+      height: 4px;
+      background: #475569;
+      border-radius: 2px;
+    }
+
+    /* ============================================ */
+    /* CLEAN DISTRACTION-FREE HOME SCREEN           */
+    /* (NO HOTSPOT BUTTONS, NO CLUTTER)            */
+    /* ============================================ */
+    .home-content {
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -287,12 +489,12 @@ HTML_TEMPLATE = """
       overflow-y: auto;
       scrollbar-width: none;
     }
-    .screen-home::-webkit-scrollbar { display: none; }
+    .home-content::-webkit-scrollbar { display: none; }
 
-    /* CLOCK & BATTERY */
+    /* DIGITAL CLOCK & BATTERY */
     .digital-clock-widget {
       text-align: center;
-      margin: 12px 0 8px 0;
+      margin: 14px 0 8px 0;
     }
     .clock-digits {
       font-size: 3.2rem;
@@ -320,7 +522,7 @@ HTML_TEMPLATE = """
       color: #000000;
     }
 
-    /* CALM DIGEST PILL */
+    /* CALM DIGEST PILL (Clicking opens Notification Shade) */
     .calm-digest-pill {
       margin: 6px 0 12px 0;
       background: #111620;
@@ -350,7 +552,7 @@ HTML_TEMPLATE = """
       border-radius: 8px;
     }
 
-    /* ZERO IMPACT METRICS CARD */
+    /* ZERO IMPACT SECURITY CARD */
     .impact-metrics-card {
       background: #0d121a;
       border: 1px solid #182232;
@@ -390,19 +592,10 @@ HTML_TEMPLATE = """
       padding: 6px 4px;
       border-radius: 10px;
     }
-    .impact-val {
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: #fff;
-      line-height: 1.1;
-    }
-    .impact-lbl {
-      font-size: 0.58rem;
-      color: #64748b;
-      margin-top: 2px;
-    }
+    .impact-val { font-size: 0.85rem; font-weight: 700; color: #fff; line-height: 1.1; }
+    .impact-lbl { font-size: 0.58rem; color: #64748b; margin-top: 2px; }
 
-    /* NATURAL LANGUAGE COMMAND BAR */
+    /* NATURAL LANGUAGE COMMAND & SEARCH BAR */
     .search-command-bar {
       background: #181d26;
       border-radius: 24px;
@@ -503,122 +696,6 @@ HTML_TEMPLATE = """
       height: 4px;
       background: #475569;
       border-radius: 3px;
-    }
-
-    /* SCREEN 2: NOTIFICATION CENTER & QUICK SETTINGS */
-    .screen-notifications {
-      flex: 1;
-      display: none;
-      flex-direction: column;
-      padding: 10px 16px 16px 16px;
-      background: #0f131a;
-      overflow-y: auto;
-    }
-    .screen-notifications.active {
-      display: flex;
-    }
-    .notif-center-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
-      padding: 0 4px;
-    }
-    .notif-center-time {
-      font-size: 1.5rem;
-      font-weight: 400;
-      color: #fff;
-    }
-    .notif-center-sub {
-      font-size: 0.72rem;
-      color: #94a3b8;
-    }
-    .btn-return-home {
-      background: #1c2433;
-      border: 1px solid #2a374d;
-      color: #cbd5e1;
-      padding: 6px 12px;
-      border-radius: 12px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    /* QUICK SETTINGS 2-COLUMN TILES GRID */
-    .qs-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    .qs-tile {
-      background: #1a2230;
-      border-radius: 18px;
-      padding: 12px 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-      transition: background 0.18s, transform 0.1s, border-color 0.18s;
-      border: 1px solid #253144;
-    }
-    .qs-tile:active { transform: scale(0.96); }
-    .qs-tile.active {
-      background: var(--android-primary);
-      border-color: #669df6;
-      color: #0c0f14;
-    }
-    .qs-tile.active .qs-tile-title { color: #0c0f14; font-weight: 700; }
-    .qs-tile.active .qs-tile-sub { color: #202b3c; font-weight: 600; }
-    .qs-tile.active .qs-icon-wrap { background: rgba(0,0,0,0.15); color: #000; }
-
-    .qs-icon-wrap {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      background: #273347;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      flex-shrink: 0;
-    }
-    .qs-tile-info { display: flex; flex-direction: column; overflow: hidden; }
-    .qs-tile-title { font-size: 0.78rem; font-weight: 600; color: #e2e8f0; white-space: nowrap; }
-    .qs-tile-sub { font-size: 0.65rem; color: #94a3b8; white-space: nowrap; margin-top: 2px; }
-
-    /* NOTIFICATIONS LIST */
-    .notifications-section-title {
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 8px;
-    }
-    .notif-card {
-      background: #151b26;
-      border: 1px solid #202b3d;
-      border-radius: 14px;
-      padding: 10px 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .notif-card-left { display: flex; align-items: center; gap: 10px; }
-    .notif-card-icon { font-size: 1.1rem; }
-    .notif-card-title { font-size: 0.76rem; font-weight: 600; color: #fff; }
-    .notif-card-sub { font-size: 0.68rem; color: #94a3b8; }
-    .notif-card-btn {
-      background: #ef4444;
-      color: #fff;
-      border: none;
-      padding: 4px 10px;
-      border-radius: 10px;
-      font-size: 0.68rem;
-      font-weight: 600;
-      cursor: pointer;
     }
 
     /* FOREGROUND ACTIVE APP WINDOW */
@@ -764,346 +841,386 @@ HTML_TEMPLATE = """
 
   <div class="top-header">
     <h1>📱 ZeroOS · Pure Everyday Operating System</h1>
-    <p>Zero-Leak Automatic Air-Gap · Clean Distraction-Free Home · Dedicated Notification Center</p>
+    <p>Standard Android Notification Center with ZeroOS Custom Buttons · Zero-Leak Automatic Air-Gap</p>
   </div>
 
   <div class="main-layout">
 
-    <div class="phone-column">
-      
-      <!-- SEGMENTED VIEW SWITCHER (Instant 1-Click Access) -->
-      <div class="view-switcher-bar">
-        <button id="btnViewHome" class="view-switch-btn active" onclick="switchView('home')">🏠 Home Screen</button>
-        <button id="btnViewNotifications" class="view-switch-btn" onclick="switchView('notifications')">🔔 Notification Center & Quick Settings</button>
-      </div>
+    <!-- REALISTIC PHONE HARDWARE -->
+    <div class="phone-container">
+      <div class="hw-btn-power" onclick="triggerPowerButton()" title="Power Button"></div>
+      <div class="hw-btn-vol-up" onclick="showToast('Volume Up')"></div>
+      <div class="hw-btn-vol-down" onclick="showToast('Volume Down')"></div>
 
-      <!-- REALISTIC PHONE HARDWARE -->
-      <div class="phone-container">
-        <div class="hw-btn-power" onclick="triggerPowerButton()" title="Power Button"></div>
-        <div class="hw-btn-vol-up" onclick="showToast('Volume Up')"></div>
-        <div class="hw-btn-vol-down" onclick="showToast('Volume Down')"></div>
+      <div class="phone-body">
+        
+        <div class="camera-punch-hole"></div>
 
-        <div class="phone-body">
-          <div class="camera-punch-hole"></div>
+        <div class="oled-screen" id="oledScreen">
 
-          <div class="oled-screen" id="oledScreen">
+          <!-- ANDROID STATUS BAR (Click or Swipe Down opens standard Notification Center) -->
+          <div class="android-status-bar" onclick="openNotificationShade()" title="Swipe down or click to open Notification Center">
+            <div class="status-left">
+              <span id="statusClock">11:28</span>
+              <span id="statusTorch" style="display:none;">🔦</span>
+              <span id="statusHotspot" style="display:none; color:#34d399; font-weight:bold;">(((•)))</span>
+            </div>
+            <div class="status-right">
+              <span id="statusShield" title="Auto Air-Gap Active">🛡️</span>
+              <span id="status5G">5G</span>
+              <span id="statusBattery">🔋 88%</span>
+            </div>
+          </div>
 
-            <!-- ANDROID STATUS BAR (Clicking also switches to Notification Center) -->
-            <div class="android-status-bar" onclick="switchView('notifications')" title="Click to open Notification Center">
-              <div class="status-left">
-                <span id="statusClock">11:28</span>
-                <span id="statusTorch" style="display:none;">🔦</span>
-                <span id="statusHotspot" style="display:none; color:#34d399; font-weight:bold;">(((•)))</span>
+          <!-- ======================================================== -->
+          <!-- STANDARD ANDROID PULL-DOWN NOTIFICATION SHADE OVERLAY   -->
+          <!-- ======================================================== -->
+          <div id="notificationShade" class="android-notification-shade">
+            
+            <div class="shade-top-bar">
+              <div>
+                <div class="shade-time-clock" id="shadeClock">11:28</div>
+                <div class="shade-date-line">Wednesday, October 29</div>
               </div>
-              <div class="status-right">
-                <span id="statusShield" title="Auto Air-Gap Active">🛡️</span>
-                <span id="status5G">5G</span>
-                <span id="statusBattery">🔋 88%</span>
+              <div class="shade-header-actions">
+                <span style="font-size:0.75rem; color:#94a3b8; font-weight:500;">🔋 88%</span>
+                <button class="btn-shade-close" onclick="closeNotificationShade()" title="Close Notification Shade">✕</button>
               </div>
             </div>
 
-            <!-- ============================================ -->
-            <!-- VIEW 1: CLEAN DISTRACTION-FREE HOME SCREEN   -->
-            <!-- (NO HOTSPOT BUTTONS, NO CLUTTER)            -->
-            <!-- ============================================ -->
-            <div class="screen-home" id="screenHome">
-
-              <!-- Digital Clock & Battery Status -->
-              <div class="digital-clock-widget">
-                <div class="clock-digits" id="widgetClock">11:28</div>
-                <div class="battery-pill-glance">
-                  <span id="widgetBatteryText">🔋 4.2 Days Battery Remaining</span>
-                  <span id="widgetNokiaBadge" class="nokia-mode-badge" style="display:none;">NOKIA MODE</span>
-                </div>
-              </div>
-
-              <!-- Calm Digest Glance Pill -->
-              <div class="calm-digest-pill" onclick="switchView('notifications')">
-                <div class="digest-pill-text">
-                  <span>🔕 Calm Digest</span>
-                  <span class="digest-count-badge" id="digestCountBadge">3 alerts held</span>
-                </div>
-                <span style="font-size:0.75rem; color:#64748b;">View in Notification Center ›</span>
-              </div>
-
-              <!-- Zero Impact Security Metrics Card -->
-              <div class="impact-metrics-card">
-                <div class="impact-card-header">
-                  <span class="impact-card-title">🛡️ Zero-Leak Impact Today</span>
-                  <span class="impact-badge-safe">AIR-GAP ACTIVE</span>
-                </div>
-                <div class="impact-grid">
-                  <div class="impact-tile">
-                    <div class="impact-val" id="impactTrackers">1,448</div>
-                    <div class="impact-lbl">Trackers Blocked</div>
-                  </div>
-                  <div class="impact-tile">
-                    <div class="impact-val" id="impactBattery">3.8h</div>
-                    <div class="impact-lbl">Battery Saved</div>
-                  </div>
-                  <div class="impact-tile">
-                    <div class="impact-val" id="impactMic">22.4h</div>
-                    <div class="impact-lbl">Mic Locked</div>
-                  </div>
-                  <div class="impact-tile">
-                    <div class="impact-val" id="impactAirgapped">10</div>
-                    <div class="impact-lbl">Apps Air-Gapped</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Natural Language Command & Search Bar -->
-              <div class="search-command-bar">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="androidSearchInput" class="search-input" placeholder="Type plain English: hotspot, nokia mode, torch, cut mic..." onkeydown="if(event.key==='Enter') executeSearchCommand()" />
-                <span class="search-mic" onclick="executeSearchCommand()" title="Execute Command">↵</span>
-              </div>
-
-              <!-- Standard Clean App Grid (Official Vector Logos) -->
-              <div class="apps-grid">
-                
-                <div class="app-icon-item" onclick="launchForegroundApp('phone')">
-                  <div class="app-icon-shape" id="icon-phone"></div>
-                  <div class="app-label">Phone</div>
-                </div>
-
-                <div class="app-icon-item" onclick="launchForegroundApp('messages')">
-                  <div class="app-icon-shape" id="icon-messages"></div>
-                  <div class="app-label">Messages</div>
-                </div>
-
-                <div class="app-icon-item" onclick="launchForegroundApp('chrome')">
-                  <div class="app-icon-shape" id="icon-chrome"></div>
-                  <div class="app-label">Chrome</div>
-                </div>
-
-                <div class="app-icon-item" onclick="launchForegroundApp('camera')">
-                  <div class="app-icon-shape" id="icon-camera"></div>
-                  <div class="app-label">Camera</div>
-                </div>
-
-                <!-- Mainstream Apps with Automatic Air-Gap Protection -->
-                <div class="app-icon-item" onclick="launchForegroundApp('whatsapp')">
-                  <div class="app-icon-shape" id="icon-whatsapp">
-                    <span class="shield-badge-dot" id="dot-whatsapp" style="display:none;">🛡️</span>
-                  </div>
-                  <div class="app-label">WhatsApp</div>
-                </div>
-
-                <div class="app-icon-item" onclick="launchForegroundApp('instagram')">
-                  <div class="app-icon-shape" id="icon-instagram">
-                    <span class="shield-badge-dot" id="dot-instagram" style="display:none;">🛡️</span>
-                  </div>
-                  <div class="app-label">Instagram</div>
-                </div>
-
-                <div class="app-icon-item" onclick="launchForegroundApp('tiktok')">
-                  <div class="app-icon-shape" id="icon-tiktok">
-                    <span class="shield-badge-dot" id="dot-tiktok" style="display:none;">🛡️</span>
-                  </div>
-                  <div class="app-label">TikTok</div>
-                </div>
-
-                <div class="app-icon-item" onclick="launchForegroundApp('youtube')">
-                  <div class="app-icon-shape" id="icon-youtube">
-                    <span class="shield-badge-dot" id="dot-youtube" style="display:none;">🛡️</span>
-                  </div>
-                  <div class="app-label">YouTube</div>
-                </div>
-
-                <div class="app-icon-item" onclick="launchForegroundApp('monzo')">
-                  <div class="app-icon-shape" id="icon-monzo">
-                    <span class="shield-badge-dot" id="dot-monzo" style="display:none;">🛡️</span>
-                  </div>
-                  <div class="app-label">Monzo</div>
-                </div>
-
-                <div class="app-icon-item" onclick="launchForegroundApp('spotify')">
-                  <div class="app-icon-shape" id="icon-spotify"></div>
-                  <div class="app-label">Spotify</div>
-                </div>
-
-                <div class="app-icon-item" onclick="launchForegroundApp('maps')">
-                  <div class="app-icon-shape" id="icon-maps"></div>
-                  <div class="app-label">Maps</div>
-                </div>
-
-                <div class="app-icon-item" onclick="quickRun('about phone')">
-                  <div class="app-icon-shape" id="icon-settings"></div>
-                  <div class="app-label">Settings</div>
-                </div>
-
-              </div>
-
-              <!-- Standard Android Dock -->
-              <div class="android-dock">
-                <div class="app-icon-item" onclick="launchForegroundApp('phone')">
-                  <div class="app-icon-shape" id="dock-phone"></div>
-                </div>
-                <div class="app-icon-item" onclick="launchForegroundApp('messages')">
-                  <div class="app-icon-shape" id="dock-messages"></div>
-                </div>
-                <div class="app-icon-item" onclick="launchForegroundApp('chrome')">
-                  <div class="app-icon-shape" id="dock-chrome"></div>
-                </div>
-                <div class="app-icon-item" onclick="launchForegroundApp('camera')">
-                  <div class="app-icon-shape" id="dock-camera"></div>
-                </div>
-              </div>
-
-              <!-- Gesture Pill -->
-              <div class="gesture-bar-container">
-                <div class="gesture-bar"></div>
-              </div>
-
+            <!-- Material Brightness Slider -->
+            <div class="brightness-slider-container">
+              <span class="brightness-icon">☀️</span>
+              <input type="range" class="brightness-slider" min="10" max="100" value="85" oninput="showToast('Display brightness: ' + this.value + '%')" />
             </div>
 
-            <!-- ==================================================== -->
-            <!-- VIEW 2: DEDICATED NOTIFICATION CENTER & QUICK SETTINGS -->
-            <!-- ==================================================== -->
-            <div class="screen-notifications" id="screenNotifications">
+            <!-- ZEROOS QUICK SETTINGS BUTTONS GRID (Pill Tiles) -->
+            <div class="qs-tiles-grid">
               
-              <div class="notif-center-header">
-                <div>
-                  <div class="notif-center-time" id="notifClock">11:28</div>
-                  <div class="notif-center-sub">Notification Center & Quick Settings</div>
+              <!-- Hotspot Tile (Bidirectional Toggle) -->
+              <div class="qs-pill-button" id="tileHotspot" onclick="toggleFeature('hotspot')">
+                <div class="qs-btn-icon">(((•)))</div>
+                <div class="qs-btn-info">
+                  <div class="qs-btn-title">Hotspot</div>
+                  <div class="qs-btn-sub" id="subHotspot">Off</div>
                 </div>
-                <button class="btn-return-home" onclick="switchView('home')">✕ Back to Home</button>
               </div>
 
-              <!-- 2x3 QUICK SETTINGS TILES (Bidirectional On/Off Toggles) -->
-              <div class="qs-grid">
-                
-                <!-- Hotspot Tile -->
-                <div class="qs-tile" id="tileHotspot" onclick="toggleFeatureTile('hotspot')">
-                  <div class="qs-icon-wrap">(((•)))</div>
-                  <div class="qs-tile-info">
-                    <div class="qs-tile-title">Hotspot</div>
-                    <div class="qs-tile-sub" id="subHotspot">Off</div>
-                  </div>
+              <!-- Nokia Mode Tile (Bidirectional Toggle) -->
+              <div class="qs-pill-button" id="tileNokia" onclick="toggleFeature('nokia')">
+                <div class="qs-btn-icon">🔋</div>
+                <div class="qs-btn-info">
+                  <div class="qs-btn-title">Nokia Mode</div>
+                  <div class="qs-btn-sub" id="subNokia">Off</div>
                 </div>
-
-                <!-- Nokia Mode Tile -->
-                <div class="qs-tile" id="tileNokia" onclick="toggleFeatureTile('nokia')">
-                  <div class="qs-icon-wrap">🔋</div>
-                  <div class="qs-tile-info">
-                    <div class="qs-tile-title">Nokia Mode</div>
-                    <div class="qs-tile-sub" id="subNokia">Off</div>
-                  </div>
-                </div>
-
-                <!-- Flashlight Tile -->
-                <div class="qs-tile" id="tileTorch" onclick="toggleFeatureTile('torch')">
-                  <div class="qs-icon-wrap">🔦</div>
-                  <div class="qs-tile-info">
-                    <div class="qs-tile-title">Flashlight</div>
-                    <div class="qs-tile-sub" id="subTorch">Off</div>
-                  </div>
-                </div>
-
-                <!-- Grayscale Tile -->
-                <div class="qs-tile" id="tileGrayscale" onclick="toggleFeatureTile('grayscale')">
-                  <div class="qs-icon-wrap">🌓</div>
-                  <div class="qs-tile-info">
-                    <div class="qs-tile-title">Grayscale</div>
-                    <div class="qs-tile-sub" id="subGrayscale">Off</div>
-                  </div>
-                </div>
-
-                <!-- Calm Digest Tile -->
-                <div class="qs-tile" id="tileDigest" onclick="toggleFeatureTile('digest')">
-                  <div class="qs-icon-wrap">🔕</div>
-                  <div class="qs-tile-info">
-                    <div class="qs-tile-title">Calm Digest</div>
-                    <div class="qs-tile-sub" id="subDigest">Active</div>
-                  </div>
-                </div>
-
-                <!-- Auto Air-Gap Tile -->
-                <div class="qs-tile" id="tileAirgap" onclick="toggleFeatureTile('airgap')">
-                  <div class="qs-icon-wrap">🛡️</div>
-                  <div class="qs-tile-info">
-                    <div class="qs-tile-title">Auto Air-Gap</div>
-                    <div class="qs-tile-sub" id="subAirgap">Active</div>
-                  </div>
-                </div>
-
               </div>
 
-              <!-- NOTIFICATIONS SECTION -->
-              <div class="notifications-section-title">Active Notifications</div>
-
-              <!-- Hotspot Active Card (Only visible when hotspot is on) -->
-              <div id="shadeHotspotCard" class="notif-card" style="display:none;">
-                <div class="notif-card-left">
-                  <span class="notif-card-icon">(((•)))</span>
-                  <div>
-                    <div class="notif-card-title">Portable Hotspot Active</div>
-                    <div class="notif-card-sub" id="shadeHotspotSub">Broadcasting ZeroPhone-5G · 1 client</div>
-                  </div>
+              <!-- Flashlight Tile (Bidirectional Toggle) -->
+              <div class="qs-pill-button" id="tileTorch" onclick="toggleFeature('torch')">
+                <div class="qs-btn-icon">🔦</div>
+                <div class="qs-btn-info">
+                  <div class="qs-btn-title">Flashlight</div>
+                  <div class="qs-btn-sub" id="subTorch">Off</div>
                 </div>
-                <button class="notif-card-btn" onclick="toggleFeatureTile('hotspot')">Turn Off</button>
               </div>
 
-              <!-- Calm Digest Notification Card -->
-              <div class="notif-card">
-                <div class="notif-card-left">
-                  <span class="notif-card-icon">🔕</span>
-                  <div>
-                    <div class="notif-card-title">Calm Notification Digest</div>
-                    <div class="notif-card-sub" id="shadeDigestSub">3 non-urgent alerts held quietly</div>
-                  </div>
+              <!-- Grayscale Tile (Bidirectional Toggle) -->
+              <div class="qs-pill-button" id="tileGrayscale" onclick="toggleFeature('grayscale')">
+                <div class="qs-btn-icon">🌓</div>
+                <div class="qs-btn-info">
+                  <div class="qs-btn-title">Grayscale</div>
+                  <div class="qs-btn-sub" id="subGrayscale">Off</div>
                 </div>
-                <button style="background:#2563eb; color:#fff; border:none; padding:4px 10px; border-radius:10px; font-size:0.68rem; font-weight:600; cursor:pointer;" onclick="clearDigestNotifications()">Clear</button>
               </div>
 
-              <!-- Kernel Security Shield Card -->
-              <div class="notif-card">
-                <div class="notif-card-left">
-                  <span class="notif-card-icon">🛡️</span>
-                  <div>
-                    <div class="notif-card-title">Zero-Leak Kernel Shield</div>
-                    <div class="notif-card-sub">10 apps air-gapped · 0 B/s background leak</div>
-                  </div>
+              <!-- Calm Digest Tile (Bidirectional Toggle) -->
+              <div class="qs-pill-button" id="tileDigest" onclick="toggleFeature('digest')">
+                <div class="qs-btn-icon">🔕</div>
+                <div class="qs-btn-info">
+                  <div class="qs-btn-title">Calm Digest</div>
+                  <div class="qs-btn-sub" id="subDigest">Active</div>
                 </div>
-                <span style="font-size:0.65rem; color:#34d399; font-weight:700;">SECURED</span>
               </div>
 
-              <div style="text-align:center; margin-top:20px;">
-                <button class="btn-return-home" style="width:100%; padding:10px;" onclick="switchView('home')">▲ Return to Clean Home Screen</button>
+              <!-- Auto Air-Gap Tile (Bidirectional Toggle) -->
+              <div class="qs-pill-button" id="tileAirgap" onclick="toggleFeature('airgap')">
+                <div class="qs-btn-icon">🛡️</div>
+                <div class="qs-btn-info">
+                  <div class="qs-btn-title">Auto Air-Gap</div>
+                  <div class="qs-btn-sub" id="subAirgap">Active</div>
+                </div>
+              </div>
+
+              <!-- Mic Hardware Lock (Bidirectional Toggle) -->
+              <div class="qs-pill-button" id="tileMic" onclick="toggleFeature('mic')">
+                <div class="qs-btn-icon">🎙️</div>
+                <div class="qs-btn-info">
+                  <div class="qs-btn-title">Mic Lock</div>
+                  <div class="qs-btn-sub" id="subMic">Unlocked</div>
+                </div>
+              </div>
+
+              <!-- Micro Window 0W Display (Bidirectional Toggle) -->
+              <div class="qs-pill-button" id="tileMicro" onclick="toggleFeature('micro')">
+                <div class="qs-btn-icon">📱</div>
+                <div class="qs-btn-info">
+                  <div class="qs-btn-title">Micro Screen</div>
+                  <div class="qs-btn-sub" id="subMicro">Off</div>
+                </div>
               </div>
 
             </div>
 
-            <!-- FOREGROUND ACTIVE APP WINDOW -->
-            <div id="activeAppWindow" class="active-app-window" style="display:none;">
-              <div class="app-window-header">
-                <div class="app-header-left">
-                  <div class="app-header-icon" id="appHeaderIcon"></div>
-                  <div>
-                    <div class="app-header-title" id="appHeaderTitle">WhatsApp</div>
-                    <span id="appHeaderBadge" class="badge-normal-airgap">AIR-GAP PROTECTED</span>
-                  </div>
-                </div>
-                <button class="btn-close-app" onclick="closeActiveApp()">Close & Air-Gap</button>
-              </div>
+            <!-- ANDROID NOTIFICATIONS STREAM -->
+            <div class="shade-notifications-stream">
               
-              <div class="app-window-body" id="appWindowBody"></div>
+              <div class="stream-header">
+                <span class="stream-header-title">Notifications</span>
+                <button class="btn-clear-notifications" onclick="clearDigestNotifications()">Clear all</button>
+              </div>
 
-              <div class="app-window-footer">
-                <button class="swipe-home-btn" onclick="closeActiveApp()">
-                  <span>⬆️ Swipe Home to Cut Network & Lock Mic</span>
-                </button>
-                <div class="gesture-bar-container" onclick="closeActiveApp()">
-                  <div class="gesture-bar"></div>
+              <!-- Hotspot Active Card (Only appears when Hotspot is on!) -->
+              <div id="shadeHotspotCard" class="android-notif-card" style="display:none;">
+                <div class="notif-app-icon-wrap" style="color:#34d399;">(((•)))</div>
+                <div class="notif-card-body">
+                  <div class="notif-card-meta">
+                    <span class="notif-card-appname">Tethering</span>
+                    <span class="notif-card-time">Active now</span>
+                  </div>
+                  <div class="notif-card-text" id="shadeHotspotSub">Broadcasting ZeroPhone-5G · 1 client connected</div>
+                  <button class="notif-card-action-btn" style="background:#ef4444;" onclick="toggleFeature('hotspot')">Turn Off</button>
                 </div>
               </div>
+
+              <!-- Direct 1-on-1 Message (Urgent priority lane) -->
+              <div class="android-notif-card">
+                <div class="notif-app-icon-wrap" style="color:#25d366;">💬</div>
+                <div class="notif-card-body">
+                  <div class="notif-card-meta">
+                    <span class="notif-card-appname">WhatsApp</span>
+                    <span class="notif-card-time">4m ago</span>
+                  </div>
+                  <div class="notif-card-text"><b>Mom:</b> Call me when you get home this evening!</div>
+                </div>
+              </div>
+
+              <!-- Calm Digest Bundled Alerts -->
+              <div class="android-notif-card">
+                <div class="notif-app-icon-wrap" style="color:#60a5fa;">🔕</div>
+                <div class="notif-card-body">
+                  <div class="notif-card-meta">
+                    <span class="notif-card-appname">Calm Digest</span>
+                    <span class="notif-card-time" id="shadeDigestTime">Held quietly</span>
+                  </div>
+                  <div class="notif-card-text" id="shadeDigestSub">3 promotional & social alerts held quietly to save battery.</div>
+                </div>
+              </div>
+
+              <!-- Zero-Leak Security Status -->
+              <div class="android-notif-card">
+                <div class="notif-app-icon-wrap" style="color:#34d399;">🛡️</div>
+                <div class="notif-card-body">
+                  <div class="notif-card-meta">
+                    <span class="notif-card-appname">ZeroOS Kernel Shield</span>
+                    <span class="notif-card-time">Active</span>
+                  </div>
+                  <div class="notif-card-text">10 apps air-gapped in background · 0 B/s data leakage.</div>
+                </div>
+              </div>
+
             </div>
 
-            <!-- TOAST -->
-            <div class="android-toast" id="androidToast">Action performed</div>
+            <!-- Bottom Swipe-Up Handle -->
+            <div class="shade-bottom-pill" onclick="closeNotificationShade()" title="Click to close shade">
+              <div class="shade-pill-handle"></div>
+            </div>
 
           </div>
+
+          <!-- ============================================ -->
+          <!-- CLEAN DISTRACTION-FREE HOME SCREEN           -->
+          <!-- (NO HOTSPOT BUTTONS, NO CHAOS)              -->
+          <!-- ============================================ -->
+          <div class="home-content" id="homeContent">
+
+            <!-- Digital Clock & Battery Status -->
+            <div class="digital-clock-widget">
+              <div class="clock-digits" id="widgetClock">11:28</div>
+              <div class="battery-pill-glance">
+                <span id="widgetBatteryText">🔋 4.2 Days Battery Remaining</span>
+                <span id="widgetNokiaBadge" class="nokia-mode-badge" style="display:none;">NOKIA MODE</span>
+              </div>
+            </div>
+
+            <!-- Calm Digest Glance Pill (Click opens pull-down shade) -->
+            <div class="calm-digest-pill" onclick="openNotificationShade()">
+              <div class="digest-pill-text">
+                <span>🔕 Calm Digest</span>
+                <span class="digest-count-badge" id="digestCountBadge">3 alerts held</span>
+              </div>
+              <span style="font-size:0.75rem; color:#64748b;">Pull down shade ›</span>
+            </div>
+
+            <!-- Zero Impact Security Metrics Card -->
+            <div class="impact-metrics-card">
+              <div class="impact-card-header">
+                <span class="impact-card-title">🛡️ Zero-Leak Impact Today</span>
+                <span class="impact-badge-safe">AIR-GAP ACTIVE</span>
+              </div>
+              <div class="impact-grid">
+                <div class="impact-tile">
+                  <div class="impact-val" id="impactTrackers">1,448</div>
+                  <div class="impact-lbl">Trackers Blocked</div>
+                </div>
+                <div class="impact-tile">
+                  <div class="impact-val" id="impactBattery">3.8h</div>
+                  <div class="impact-lbl">Battery Saved</div>
+                </div>
+                <div class="impact-tile">
+                  <div class="impact-val" id="impactMic">22.4h</div>
+                  <div class="impact-lbl">Mic Locked</div>
+                </div>
+                <div class="impact-tile">
+                  <div class="impact-val" id="impactAirgapped">10</div>
+                  <div class="impact-lbl">Apps Air-Gapped</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Natural Language Command & Search Bar -->
+            <div class="search-command-bar">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="androidSearchInput" class="search-input" placeholder="Type plain English: hotspot, nokia mode, torch, cut mic..." onkeydown="if(event.key==='Enter') executeSearchCommand()" />
+              <span class="search-mic" onclick="executeSearchCommand()" title="Execute Command">↵</span>
+            </div>
+
+            <!-- Standard Clean App Grid (Official Vector Logos) -->
+            <div class="apps-grid">
+              
+              <div class="app-icon-item" onclick="launchForegroundApp('phone')">
+                <div class="app-icon-shape" id="icon-phone"></div>
+                <div class="app-label">Phone</div>
+              </div>
+
+              <div class="app-icon-item" onclick="launchForegroundApp('messages')">
+                <div class="app-icon-shape" id="icon-messages"></div>
+                <div class="app-label">Messages</div>
+              </div>
+
+              <div class="app-icon-item" onclick="launchForegroundApp('chrome')">
+                <div class="app-icon-shape" id="icon-chrome"></div>
+                <div class="app-label">Chrome</div>
+              </div>
+
+              <div class="app-icon-item" onclick="launchForegroundApp('camera')">
+                <div class="app-icon-shape" id="icon-camera"></div>
+                <div class="app-label">Camera</div>
+              </div>
+
+              <!-- Mainstream Apps with Automatic Air-Gap Protection -->
+              <div class="app-icon-item" onclick="launchForegroundApp('whatsapp')">
+                <div class="app-icon-shape" id="icon-whatsapp">
+                  <span class="shield-badge-dot" id="dot-whatsapp" style="display:none;">🛡️</span>
+                </div>
+                <div class="app-label">WhatsApp</div>
+              </div>
+
+              <div class="app-icon-item" onclick="launchForegroundApp('instagram')">
+                <div class="app-icon-shape" id="icon-instagram">
+                  <span class="shield-badge-dot" id="dot-instagram" style="display:none;">🛡️</span>
+                </div>
+                <div class="app-label">Instagram</div>
+              </div>
+
+              <div class="app-icon-item" onclick="launchForegroundApp('tiktok')">
+                <div class="app-icon-shape" id="icon-tiktok">
+                  <span class="shield-badge-dot" id="dot-tiktok" style="display:none;">🛡️</span>
+                </div>
+                <div class="app-label">TikTok</div>
+              </div>
+
+              <div class="app-icon-item" onclick="launchForegroundApp('youtube')">
+                <div class="app-icon-shape" id="icon-youtube">
+                  <span class="shield-badge-dot" id="dot-youtube" style="display:none;">🛡️</span>
+                </div>
+                <div class="app-label">YouTube</div>
+              </div>
+
+              <div class="app-icon-item" onclick="launchForegroundApp('monzo')">
+                <div class="app-icon-shape" id="icon-monzo">
+                  <span class="shield-badge-dot" id="dot-monzo" style="display:none;">🛡️</span>
+                </div>
+                <div class="app-label">Monzo</div>
+              </div>
+
+              <div class="app-icon-item" onclick="launchForegroundApp('spotify')">
+                <div class="app-icon-shape" id="icon-spotify"></div>
+                <div class="app-label">Spotify</div>
+              </div>
+
+              <div class="app-icon-item" onclick="launchForegroundApp('maps')">
+                <div class="app-icon-shape" id="icon-maps"></div>
+                <div class="app-label">Maps</div>
+              </div>
+
+              <div class="app-icon-item" onclick="quickRun('about phone')">
+                <div class="app-icon-shape" id="icon-settings"></div>
+                <div class="app-label">Settings</div>
+              </div>
+
+            </div>
+
+            <!-- Standard Android Dock -->
+            <div class="android-dock">
+              <div class="app-icon-item" onclick="launchForegroundApp('phone')">
+                <div class="app-icon-shape" id="dock-phone"></div>
+              </div>
+              <div class="app-icon-item" onclick="launchForegroundApp('messages')">
+                <div class="app-icon-shape" id="dock-messages"></div>
+              </div>
+              <div class="app-icon-item" onclick="launchForegroundApp('chrome')">
+                <div class="app-icon-shape" id="dock-chrome"></div>
+              </div>
+              <div class="app-icon-item" onclick="launchForegroundApp('camera')">
+                <div class="app-icon-shape" id="dock-camera"></div>
+              </div>
+            </div>
+
+            <!-- Gesture Navigation Bar -->
+            <div class="gesture-bar-container">
+              <div class="gesture-bar"></div>
+            </div>
+
+          </div>
+
+          <!-- FOREGROUND ACTIVE APP WINDOW -->
+          <div id="activeAppWindow" class="active-app-window" style="display:none;">
+            <div class="app-window-header">
+              <div class="app-header-left">
+                <div class="app-header-icon" id="appHeaderIcon"></div>
+                <div>
+                  <div class="app-header-title" id="appHeaderTitle">WhatsApp</div>
+                  <span id="appHeaderBadge" class="badge-normal-airgap">AIR-GAP PROTECTED</span>
+                </div>
+              </div>
+              <button class="btn-close-app" onclick="closeActiveApp()">Close & Air-Gap</button>
+            </div>
+            
+            <div class="app-window-body" id="appWindowBody"></div>
+
+            <div class="app-window-footer">
+              <button class="swipe-home-btn" onclick="closeActiveApp()">
+                <span>⬆️ Swipe Home to Cut Network & Lock Mic</span>
+              </button>
+              <div class="gesture-bar-container" onclick="closeActiveApp()">
+                <div class="gesture-bar"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TOAST -->
+          <div class="android-toast" id="androidToast">Action performed</div>
+
         </div>
       </div>
     </div>
@@ -1154,11 +1271,11 @@ HTML_TEMPLATE = """
 
       <!-- USER GUIDANCE -->
       <div class="side-box">
-        <div class="side-box-title">💡 How Everyday Users Experience ZeroOS</div>
+        <div class="side-box-title">💡 How to Pull Down the Notification Center</div>
         <div style="font-size:0.78rem; line-height:1.6; color:#cbd5e1;">
-          <p>• <b>Clean Home:</b> Notice the home screen has NO buttons for hotspot or toggles. It is completely clean and distraction-free.</p>
-          <p style="margin-top:6px;">• <b>Notification Center:</b> Click the <b>🔔 Notification Center</b> button above the phone. Here you can tap Hotspot, Nokia Mode, Flashlight, or Grayscale to turn them ON or OFF.</p>
-          <p style="margin-top:6px;">• <b>Natural Language:</b> From the home screen, you can also just type <code>hotspot</code>, <code>nokia mode</code>, or <code>torch</code> to toggle them without touching any buttons.</p>
+          <p>• <b>Pull Down the Notification Center:</b> Click anywhere on the <b>Top Status Bar</b> (or drag down from the top edge). The real Android Material You notification shade smoothly drops down.</p>
+          <p style="margin-top:6px;">• <b>ZeroOS Buttons:</b> In the shade, tap <b>Hotspot</b>, <b>Nokia Mode</b>, <b>Torch</b>, <b>Grayscale</b>, or <b>Mic Lock</b>. Every button turns ON on click, and OFF on second click.</p>
+          <p style="margin-top:6px;">• <b>Dismiss the Shade:</b> Click the <b>✕</b> at top right or the bottom drag pill to return to your clean home screen.</p>
         </div>
       </div>
 
@@ -1184,7 +1301,6 @@ HTML_TEMPLATE = """
     };
 
     let state = {};
-    let currentScreen = "home";
 
     async function loadState() {
       const res = await fetch('/api/state');
@@ -1202,28 +1318,16 @@ HTML_TEMPLATE = """
       });
     }
 
-    function switchView(viewName) {
-      currentScreen = viewName;
-      const btnHome = document.getElementById('btnViewHome');
-      const btnNotif = document.getElementById('btnViewNotifications');
-      const screenHome = document.getElementById('screenHome');
-      const screenNotif = document.getElementById('screenNotifications');
+    function openNotificationShade() {
+      document.getElementById('notificationShade').classList.add('open');
+    }
 
-      if (viewName === 'home') {
-        btnHome.classList.add('active');
-        btnNotif.classList.remove('active');
-        screenHome.style.display = 'flex';
-        screenNotif.classList.remove('active');
-      } else {
-        btnNotif.classList.add('active');
-        btnHome.classList.remove('active');
-        screenHome.style.display = 'none';
-        screenNotif.classList.add('active');
-      }
+    function closeNotificationShade() {
+      document.getElementById('notificationShade').classList.remove('open');
     }
 
     function renderUI() {
-      // 1. Status Bar & Battery
+      // 1. Status Bar
       document.getElementById('statusTorch').style.display = state.is_torch_on ? 'inline-block' : 'none';
       document.getElementById('statusHotspot').style.display = state.is_hotspot_on ? 'inline-block' : 'none';
 
@@ -1248,22 +1352,24 @@ HTML_TEMPLATE = """
         document.getElementById('statBattery').innerText = `${state.battery_days_remaining} Days`;
       }
 
-      // 2. Notification Center Quick Settings Tiles
+      // 2. Quick Settings Buttons inside Notification Shade
       updateTileUI('tileHotspot', 'subHotspot', state.is_hotspot_on, state.hotspot_ssid, 'Off');
       updateTileUI('tileNokia', 'subNokia', state.is_nokia_mode, '5.8 Days (60Hz)', 'Off');
       updateTileUI('tileTorch', 'subTorch', state.is_torch_on, 'On', 'Off');
-      updateTileUI('tileGrayscale', 'subGrayscale', state.is_grayscale, 'Monochrome', 'Off');
+      updateTileUI('tileGrayscale', 'subGrayscale', state.is_grayscale, 'Active', 'Off');
       updateTileUI('tileDigest', 'subDigest', state.calm_digest_enabled, 'Active', 'Off');
       updateTileUI('tileAirgap', 'subAirgap', state.auto_airgap_enabled, 'Active', 'Paused');
+      updateTileUI('tileMic', 'subMic', state.is_mic_killed, 'Locked (Silence)', 'Unlocked');
+      updateTileUI('tileMicro', 'subMicro', state.is_micro_window, '0W Clamped', 'Off');
 
-      // 3. Hotspot card inside notification center (Only when on)
+      // 3. Hotspot notification card inside shade
       const hotspotCard = document.getElementById('shadeHotspotCard');
       hotspotCard.style.display = state.is_hotspot_on ? 'flex' : 'none';
 
       // 4. Calm Digest Count
       const digestCount = state.calm_digest_items ? state.calm_digest_items.length : 0;
       document.getElementById('digestCountBadge').innerText = `${digestCount} held quietly`;
-      document.getElementById('shadeDigestSub').innerText = `${digestCount} non-urgent alerts held quietly`;
+      document.getElementById('shadeDigestSub').innerText = `${digestCount} non-urgent alerts held quietly to save battery.`;
 
       // 5. Impact Metrics Card
       if (state.impact_stats) {
@@ -1313,7 +1419,7 @@ HTML_TEMPLATE = """
       }
     }
 
-    async function toggleFeatureTile(featureName) {
+    async function toggleFeature(featureName) {
       const res = await fetch('/api/toggle_feature', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1454,7 +1560,7 @@ HTML_TEMPLATE = """
       const now = new Date();
       const timeStr = now.toTimeString().slice(0, 5);
       document.getElementById('statusClock').innerText = timeStr;
-      document.getElementById('notifClock').innerText = timeStr;
+      document.getElementById('shadeClock').innerText = timeStr;
       document.getElementById('widgetClock').innerText = timeStr;
     }, 10000);
   </script>
@@ -1514,6 +1620,18 @@ def toggle_feature():
         act = "ACTIVE" if STATE["auto_airgap_enabled"] else "PAUSED"
         STATE["kernel_logs"].append(f"[AutoAirGap] Automatic zero-leak policy {act}")
         msg = f"🛡️ Auto Air-Gap policy {act}."
+
+    elif feat == "mic":
+        STATE["is_mic_killed"] = not STATE["is_mic_killed"]
+        act = "LOCKED (SILENCE)" if STATE["is_mic_killed"] else "UNLOCKED"
+        STATE["kernel_logs"].append(f"[AppOps] Microphone hardware register toggled {act}")
+        msg = f"🎙️ Microphone hardware register {act}."
+
+    elif feat == "micro":
+        STATE["is_micro_window"] = not STATE["is_micro_window"]
+        act = "ON (0W Mode)" if STATE["is_micro_window"] else "OFF"
+        STATE["kernel_logs"].append(f"[SurfaceFlinger] Micro window clamped display {act}")
+        msg = f"📱 Micro Screen {act}."
 
     else:
         msg = "Unknown feature toggle."
