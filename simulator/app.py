@@ -823,6 +823,9 @@ HTML_TEMPLATE = """
               <button class="notif-btn" onclick="sendCommand('turn off flash')">Turn Off</button>
             </div>
 
+            <!-- Dynamic App Sensor Shield Notifications (Mic Lock, Data Cut) -->
+            <div id="shieldNotifications" style="display:flex; flex-direction:column; gap:6px;"></div>
+
           </div>
 
           <!-- 3. ANDROID HOME SCREEN CONTENT -->
@@ -1109,10 +1112,7 @@ HTML_TEMPLATE = """
       for (const [key, svgHtml] of Object.entries(OFFICIAL_ICONS)) {
         const el = document.getElementById(`icon-${key}`);
         if (el) {
-          // preserve dot if existing
-          const existingDot = el.querySelector('.shield-badge-dot');
-          el.innerHTML = svgHtml;
-          if (existingDot) el.appendChild(existingDot);
+          el.innerHTML = svgHtml + `<span class="shield-badge-dot" id="dot-${key}" style="display:none;">🛡️</span>`;
         }
       }
       // Dock Icons
@@ -1200,6 +1200,42 @@ HTML_TEMPLATE = """
             dot.innerText = '🛡️';
           } else {
             dot.style.display = 'none';
+          }
+        }
+      }
+
+      // Dynamic Sensor Shield Notifications (Mic Lock, Data Cut)
+      const shieldNotifs = document.getElementById('shieldNotifications');
+      if (shieldNotifs) {
+        shieldNotifs.innerHTML = '';
+        for (const [key, app] of Object.entries(state.app_shields)) {
+          if (app.mic_muted) {
+            shieldNotifs.innerHTML += `
+              <div class="android-notif" style="border-color:var(--android-amber);">
+                <div class="notif-left">
+                  <span class="notif-icon">🎙️</span>
+                  <div>
+                    <div class="notif-title">${app.name} Mic Locked</div>
+                    <div class="notif-desc">AppOps hardware register denied (0 audio)</div>
+                  </div>
+                </div>
+                <button class="notif-btn" onclick="toggleShieldByName('${key}', 'mic')">Unmute</button>
+              </div>
+            `;
+          }
+          if (app.data_cut) {
+            shieldNotifs.innerHTML += `
+              <div class="android-notif" style="border-color:var(--android-red);">
+                <div class="notif-left">
+                  <span class="notif-icon">📶</span>
+                  <div>
+                    <div class="notif-title">${app.name} Mobile Data Cut</div>
+                    <div class="notif-desc">0 B/s at netfilter layer · Packets dropped</div>
+                  </div>
+                </div>
+                <button class="notif-btn" onclick="toggleShieldByName('${key}', 'data')">Restore</button>
+              </div>
+            `;
           }
         }
       }
@@ -1333,6 +1369,18 @@ HTML_TEMPLATE = """
       const data = await res.json();
       state = data.state;
       updateModalButtons(state.app_shields[selectedAppKey]);
+      renderUI();
+      showToast(data.message);
+    }
+
+    async function toggleShieldByName(key, type) {
+      const res = await fetch('/api/toggle_shield', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ app_key: key, shield_type: type })
+      });
+      const data = await res.json();
+      state = data.state;
       renderUI();
       showToast(data.message);
     }
@@ -1502,8 +1550,12 @@ def process_command():
             "state": STATE
         })
 
-    # 9. CUT DATA FOR APPS
-    if "cut data" in lower or "block data" in lower:
+    # 9. CUT / BLOCK / RESTORE DATA FOR APPS
+    has_data_word = any(w in lower for w in ["data", "internet", "wifi", "cellular", "net"])
+    has_cut_word = any(w in lower for w in ["cut", "block", "kill", "stop", "disable", "turn off", "no "])
+    has_restore_word = any(w in lower for w in ["restore", "allow", "unblock", "enable", "turn on", "start"])
+
+    if has_data_word and has_cut_word:
         targets = [k for k in STATE["app_shields"].keys() if k in lower]
         if not targets:
             targets = ["instagram", "tiktok"]
@@ -1511,26 +1563,59 @@ def process_command():
             app = STATE["app_shields"][t]
             app["data_cut"] = True
             STATE["kernel_logs"].append(f"[iptables] iptables -I OUTPUT -m owner --uid-owner {app['package']} -j DROP")
+            STATE["kernel_logs"].append(f"[ip6tables] ip6tables -I OUTPUT -m owner --uid-owner {app['package']} -j DROP")
         names = [STATE["app_shields"][t]["name"] for t in targets]
         return jsonify({
             "success": True,
-            "message": f"⚡ Data severed at kernel level for: {', '.join(names)}.",
+            "message": f"⚡ Mobile & Wi-Fi data severed at kernel level for: {', '.join(names)}. Background draw = 0 B/s.",
             "state": STATE
         })
 
-    # 10. MUTE MIC FOR APPS
-    if "mute mic" in lower or "kill mic" in lower:
+    if has_data_word and has_restore_word:
+        targets = [k for k in STATE["app_shields"].keys() if k in lower]
+        if not targets:
+            targets = list(STATE["app_shields"].keys())
+        for t in targets:
+            app = STATE["app_shields"][t]
+            app["data_cut"] = False
+            STATE["kernel_logs"].append(f"[iptables] Flushed DROP rules for {app['package']}")
+        names = [STATE["app_shields"][t]["name"] for t in targets]
+        return jsonify({
+            "success": True,
+            "message": f"📶 Mobile data restored for: {', '.join(names)}.",
+            "state": STATE
+        })
+
+    # 10. MUTE / CUT / UNMUTE MIC FOR APPS
+    has_mic_word = any(w in lower for w in ["mic", "microphone", "audio", "listen", "spying"])
+    if has_mic_word and has_cut_word:
         targets = [k for k in STATE["app_shields"].keys() if k in lower]
         if not targets:
             targets = ["whatsapp", "instagram"]
         for t in targets:
             app = STATE["app_shields"][t]
             app["mic_muted"] = True
-            STATE["kernel_logs"].append(f"[AppOps] cmd appops set {app['package']} RECORD_AUDIO deny")
+            STATE["kernel_logs"].append(f"[AppOps] cmd appops set {app['package']} RECORD_AUDIO deny -> REGISTER LOCKED")
+            STATE["kernel_logs"].append(f"[AudioFlinger] Microphone PCM input stream for UID 10122 locked. Audio feeds silence")
         names = [STATE["app_shields"][t]["name"] for t in targets]
         return jsonify({
             "success": True,
-            "message": f"🎙️ Microphone hardware register LOCKED for: {', '.join(names)}.",
+            "message": f"🎙️ Microphone hardware register LOCKED for: {', '.join(names)}. Audio feeds dead silence.",
+            "state": STATE
+        })
+
+    if has_mic_word and has_restore_word:
+        targets = [k for k in STATE["app_shields"].keys() if k in lower]
+        if not targets:
+            targets = list(STATE["app_shields"].keys())
+        for t in targets:
+            app = STATE["app_shields"][t]
+            app["mic_muted"] = False
+            STATE["kernel_logs"].append(f"[AppOps] cmd appops set {app['package']} RECORD_AUDIO allow")
+        names = [STATE["app_shields"][t]["name"] for t in targets]
+        return jsonify({
+            "success": True,
+            "message": f"🎙️ Microphone access restored for: {', '.join(names)}.",
             "state": STATE
         })
 

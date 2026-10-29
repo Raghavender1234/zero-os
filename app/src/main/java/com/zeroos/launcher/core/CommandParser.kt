@@ -93,9 +93,9 @@ object CommandParser {
             return ZeroCommand.RestoreMobileData(apps)
         }
 
-        // 9. SENSOR: MUTE MICROPHONE
-        if (lower.contains("mute mic") || lower.contains("kill mic") || lower.contains("block mic") || lower.contains("mute audio") || lower.startsWith("/mute-mic")) {
-            val apps = extractAppTargets(lower, listOf("mute mic for", "kill mic for", "block mic for", "mute audio for", "/mute-mic"))
+        // 9. SENSOR: MUTE / CUT MICROPHONE
+        if (lower.contains("cut mic") || lower.contains("mute mic") || lower.contains("kill mic") || lower.contains("block mic") || lower.contains("cut audio") || lower.contains("mute audio") || lower.contains("cut microphone") || lower.startsWith("/mute-mic")) {
+            val apps = extractAppTargets(lower, listOf("cut mic for", "cut mic to", "mute mic for", "kill mic for", "block mic for", "cut microphone for", "mute audio for", "/mute-mic"))
             return ZeroCommand.MuteMicrophone(apps)
         }
 
