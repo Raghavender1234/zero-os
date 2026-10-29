@@ -65,6 +65,12 @@ class AutoAirGapManager(private val context: Context) {
         try {
             val uid = getAppUid(packageName)
             if (uid > 0) {
+                // Check if user has an intentional media (Spotify) or navigation (Maps) session active
+                if (MediaNavSessionManager(context).shouldHoldAirGapExemption(packageName)) {
+                    Log.i(tag, "App '$packageName' (UID $uid) has an active intentional Media or Navigation session. Holding background stream exception.")
+                    return
+                }
+
                 Log.i(tag, "App '$packageName' (UID $uid) exited to BACKGROUND: Initiating zero-leak air-gap lockdown")
                 
                 // 1. Drop all outbound background packets at kernel netfilter layer

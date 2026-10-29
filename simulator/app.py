@@ -1802,6 +1802,80 @@ HTML_TEMPLATE = """
             </div>
           </div>
         `;
+      } else if (appKey === 'spotify') {
+        const isPlaying = state.is_spotify_playing;
+        body.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:space-between; width:100%; height:100%; padding:8px 0;">
+            <div style="font-size:0.72rem; color:#94a3b8;">Intentional Media Session · Audio Streaming Only</div>
+            
+            <div style="width:130px; height:130px; border-radius:16px; background:#18202d; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.06);">
+              <div style="width:64px; height:64px;">${OFFICIAL_ICONS['spotify']}</div>
+            </div>
+
+            <div style="text-align:center;">
+              <div style="font-size:1.05rem; font-weight:700; color:#fff;">Blinding Lights</div>
+              <div style="font-size:0.78rem; color:#94a3b8; margin-top:2px;">The Weeknd · After Hours</div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div style="width:100%; padding:0 8px;">
+              <div style="height:4px; background:#232d3d; border-radius:2px; position:relative; overflow:hidden;">
+                <div style="width:${isPlaying ? '68%' : '35%'}; height:100%; background:#1db954; transition:width 0.3s;"></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:0.68rem; color:#64748b; margin-top:4px;">
+                <span>${isPlaying ? '2:14' : '1:08'}</span>
+                <span>3:20</span>
+              </div>
+            </div>
+
+            <!-- Controls -->
+            <div style="display:flex; align-items:center; gap:20px;">
+              <button style="background:none; border:none; color:#cbd5e1; font-size:1.2rem; cursor:pointer;" onclick="showToast('⏮ Previous track')">⏮</button>
+              <button style="background:#1db954; color:#000; border:none; width:48px; height:48px; border-radius:50%; font-size:1.2rem; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold;" onclick="toggleMediaPlayback()">
+                ${isPlaying ? '⏸' : '▶'}
+              </button>
+              <button style="background:none; border:none; color:#cbd5e1; font-size:1.2rem; cursor:pointer;" onclick="showToast('⏭ Next track')">⏭</button>
+            </div>
+
+            <div style="font-size:0.68rem; color:${isPlaying ? '#34d399' : '#94a3b8'}; text-align:center; padding:0 12px; line-height:1.3;">
+              ${isPlaying ? '🎵 Audio plays in background when screen turns off (Ad trackers blocked).' : '⏸ Paused. Steel door will engage immediately when you exit.'}
+            </div>
+          </div>
+        `;
+      } else if (appKey === 'maps') {
+        const isNav = state.is_maps_navigating;
+        body.innerHTML = `
+          <div style="display:flex; flex-direction:column; width:100%; height:100%; justify-content:space-between;">
+            
+            <div style="background:#141b26; border-radius:14px; padding:12px; border:1px solid rgba(255,255,255,0.06);">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:34px; height:34px; border-radius:50%; background:#3b82f6; display:flex; align-items:center; justify-content:center; font-size:1.1rem; font-weight:bold; color:#fff;">↱</div>
+                <div>
+                  <div style="font-size:0.9rem; font-weight:700; color:#fff;">Turn right on Grand Ave</div>
+                  <div style="font-size:0.72rem; color:#94a3b8;">In 250 meters · Then keep left</div>
+                </div>
+              </div>
+              <div style="margin-top:10px; display:flex; justify-content:space-between; font-size:0.78rem; border-top:1px solid #1f2937; padding-top:6px;">
+                <span style="color:#34d399; font-weight:700;">12 min</span>
+                <span style="color:#94a3b8;">4.8 km · 14:48 arrival</span>
+              </div>
+            </div>
+
+            <div style="flex:1; background:#0b1017; border-radius:12px; margin:8px 0; border:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; align-items:center; justify-content:center;">
+              <div style="color:#475569; font-size:0.75rem;">[Offline Vector Navigation View]</div>
+              <div style="font-size:0.68rem; color:#64748b; margin-top:4px;">GNSS Live Coordinates: 51.5074° N, 0.1278° W</div>
+              <div style="margin-top:6px; display:inline-block; padding:3px 8px; border-radius:8px; font-size:0.65rem; background:${isNav ? '#10b981' : '#334155'}; color:${isNav ? '#000' : '#cbd5e1'}; font-weight:700;">
+                ${isNav ? 'ACTIVE TRIP NAVIGATION' : 'IDLE PREVIEW'}
+              </div>
+            </div>
+
+            <div>
+              <button style="width:100%; background:${isNav ? '#ef4444' : '#3b82f6'}; color:#fff; border:none; padding:11px; border-radius:12px; font-size:0.82rem; font-weight:700; cursor:pointer;" onclick="toggleTripNavigation()">
+                ${isNav ? '🛑 End Navigation Trip' : '🧭 Start Turn-by-Turn Route'}
+              </button>
+            </div>
+          </div>
+        `;
       } else {
         body.innerHTML = `
           <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; text-align:center; padding:20px;">
@@ -1813,6 +1887,24 @@ HTML_TEMPLATE = """
           </div>
         `;
       }
+    }
+
+    async function toggleMediaPlayback() {
+      const res = await fetch('/api/toggle_media', { method: 'POST' });
+      const data = await res.json();
+      state = data.state;
+      renderUI();
+      if (state.active_app) renderActiveAppContent(state.active_app, state.is_ephemeral);
+      showToast(data.message);
+    }
+
+    async function toggleTripNavigation() {
+      const res = await fetch('/api/toggle_navigation', { method: 'POST' });
+      const data = await res.json();
+      state = data.state;
+      renderUI();
+      if (state.active_app) renderActiveAppContent(state.active_app, state.is_ephemeral);
+      showToast(data.message);
     }
 
     async function launchForegroundApp(appKey, isEphemeral = false) {
@@ -2021,8 +2113,46 @@ def launch_app():
 
     return jsonify({"success": True, "message": msg, "state": STATE})
 
+@app.route("/api/toggle_media", methods=["POST"])
+def toggle_media():
+    STATE["is_spotify_playing"] = not STATE.get("is_spotify_playing", False)
+    if STATE["is_spotify_playing"]:
+        STATE["kernel_logs"].append("[MediaNavGuard] Spotify audio STARTED. Intentional playback granted streaming exception.")
+        msg = "🎵 Spotify is now PLAYING (Will stay active when screen locks)."
+    else:
+        STATE["kernel_logs"].append("[MediaNavGuard] Spotify PAUSED. Instant zero-leak Air-Gap armed.")
+        msg = "⏸ Spotify PAUSED. Background data severed."
+    return jsonify({"success": True, "message": msg, "state": STATE})
+
+@app.route("/api/toggle_navigation", methods=["POST"])
+def toggle_navigation():
+    STATE["is_maps_navigating"] = not STATE.get("is_maps_navigating", False)
+    if STATE["is_maps_navigating"]:
+        STATE["kernel_logs"].append("[MediaNavGuard] Google Maps navigation STARTED. GNSS stream active for trip.")
+        msg = "🧭 Turn-by-turn navigation ACTIVE (Will speak directions with screen off)."
+    else:
+        STATE["kernel_logs"].append("[MediaNavGuard] Navigation ENDED. GNSS sensor permissions wiped.")
+        msg = "🛑 Navigation ENDED. GPS hardware revoked immediately."
+    return jsonify({"success": True, "message": msg, "state": STATE})
+
 @app.route("/api/close_app", methods=["POST"])
 def close_app():
+    closed_app = STATE["active_app"] or "App"
+    is_ephemeral = STATE["is_ephemeral"]
+
+    # Check Intentional Media Exception (Spotify)
+    if closed_app == "spotify" and STATE.get("is_spotify_playing", False):
+        STATE["active_app"] = None
+        STATE["kernel_logs"].append("[MediaNavGuard] Intentional Media Session: 'com.spotify.music' holding audio socket. Ad analytics dropped.")
+        msg = "🎵 Spotify playing in background (Audio only · Trackers dropped)."
+        return jsonify({"success": True, "message": msg, "state": STATE})
+
+    # Check Intentional Navigation Exception (Google Maps)
+    if closed_app == "maps" and STATE.get("is_maps_navigating", False):
+        STATE["active_app"] = None
+        STATE["kernel_logs"].append("[MediaNavGuard] Active Navigation Session: 'com.google.android.apps.maps' holding GNSS stream for trip.")
+        msg = "🧭 Google Maps navigating in background (Trip guidance active)."
+        return jsonify({"success": True, "message": msg, "state": STATE})
     closed_app = STATE["active_app"] or "App"
     is_ephemeral = STATE["is_ephemeral"]
 
