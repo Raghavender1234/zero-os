@@ -29,10 +29,10 @@ STATE = {
         {"id": 3, "app": "UberEats", "title": "Promotion", "desc": "30% off your next lunch order before 2 PM", "time": "2h ago"}
     ],
     "impact_stats": {
-        "trackers_blocked": 1420,
+        "trackers_blocked": 1448,
         "battery_hours_saved": 3.8,
         "mic_hours_locked": 22.4,
-        "airgapped_apps": 8
+        "airgapped_apps": 10
     },
     "app_shields": {
         "whatsapp": {
@@ -81,7 +81,7 @@ STATE = {
         "[0.042100] Android Runtime (ART) initialized. Dalvik VM ready",
         "[0.120500] Netfilter iptables ready. Stealth FCM Push Bridge: ACTIVE",
         "[0.840000] AutoAirGapManager registered. Zero-leak background killer armed",
-        "[1.020000] SystemUI / Launcher booted. Material 3 Shell online (120Hz)"
+        "[1.020000] SystemUI / QuickSettings shade online. Status bar ready."
     ]
 }
 
@@ -231,7 +231,7 @@ HTML_TEMPLATE = """
       z-index: 100;
     }
 
-    /* 1. ANDROID STATUS BAR */
+    /* 1. ANDROID STATUS BAR (Clickable to pull down Quick Settings) */
     .android-status-bar {
       height: 38px;
       padding: 0 18px;
@@ -243,6 +243,11 @@ HTML_TEMPLATE = """
       color: #cbd5e1;
       z-index: 90;
       background: transparent;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .android-status-bar:hover {
+      background: rgba(255, 255, 255, 0.04);
     }
     .status-left {
       display: flex;
@@ -271,33 +276,162 @@ HTML_TEMPLATE = """
       50% { opacity: 0.65; }
     }
 
-    /* DYNAMIC NOTIFICATION PILL / BANNER */
-    .hotspot-banner {
-      margin: 4px 14px 6px 14px;
-      background: #141a24;
-      border: 1px solid #1e293b;
-      border-radius: 14px;
-      padding: 8px 12px;
+    /* NOTIFICATION / QUICK SETTINGS PULL HANDLE */
+    .qs-pull-hint {
+      text-align: center;
+      font-size: 0.62rem;
+      color: #475569;
+      margin-top: -2px;
+      margin-bottom: 2px;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .qs-pull-hint:hover { color: #94a3b8; }
+
+    /* QUICK SETTINGS NOTIFICATION SHADE (Pull-Down Shade) */
+    .notification-shade {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 94%;
+      background: #0f131a;
+      border-bottom: 2px solid #232d3d;
+      border-radius: 0 0 32px 32px;
+      z-index: 105;
+      padding: 42px 18px 20px 18px;
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      transform: translateY(-100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+      overflow-y: auto;
+    }
+    .notification-shade.open {
+      transform: translateY(0);
+    }
+    .shade-header {
+      display: flex;
       justify-content: space-between;
-      font-size: 0.75rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      align-items: center;
+      margin-bottom: 16px;
     }
-    .hotspot-banner-title {
+    .shade-time {
+      font-size: 1.6rem;
+      font-weight: 400;
+      color: #fff;
+    }
+    .shade-battery {
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+    .btn-close-shade {
+      background: #1c2433;
+      border: 1px solid #2a374d;
+      color: #cbd5e1;
+      padding: 6px 14px;
+      border-radius: 14px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* QUICK SETTINGS 2-COLUMN TILES GRID */
+    .qs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .qs-tile {
+      background: #1a2230;
+      border-radius: 18px;
+      padding: 12px 14px;
       display: flex;
       align-items: center;
-      gap: 8px;
-      color: #e2e8f0;
-      font-weight: 500;
+      gap: 10px;
+      cursor: pointer;
+      transition: background 0.18s, transform 0.1s, border-color 0.18s;
+      border: 1px solid #253144;
     }
-    .hotspot-kill-btn {
+    .qs-tile:active { transform: scale(0.96); }
+    .qs-tile.active {
+      background: var(--android-primary);
+      border-color: #669df6;
+      color: #0c0f14;
+    }
+    .qs-tile.active .qs-tile-title { color: #0c0f14; font-weight: 700; }
+    .qs-tile.active .qs-tile-sub { color: #202b3c; font-weight: 600; }
+    .qs-tile.active .qs-icon-wrap { background: rgba(0,0,0,0.15); color: #000; }
+
+    .qs-icon-wrap {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #273347;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .qs-tile-info {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .qs-tile-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      white-space: nowrap;
+    }
+    .qs-tile-sub {
+      font-size: 0.65rem;
+      color: #94a3b8;
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+
+    /* NOTIFICATIONS LIST INSIDE SHADE */
+    .shade-notifications-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .shade-section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    .shade-notif-card {
+      background: #151b26;
+      border: 1px solid #202b3d;
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .shade-notif-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .shade-notif-icon { font-size: 1.1rem; }
+    .shade-notif-title { font-size: 0.76rem; font-weight: 600; color: #fff; }
+    .shade-notif-sub { font-size: 0.68rem; color: #94a3b8; }
+    .shade-notif-btn {
       background: #ef4444;
       color: #fff;
       border: none;
       padding: 4px 10px;
       border-radius: 10px;
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       font-weight: 600;
       cursor: pointer;
     }
@@ -313,7 +447,7 @@ HTML_TEMPLATE = """
     }
     .home-content::-webkit-scrollbar { display: none; }
 
-    /* 3. DIGITAL CLOCK & BATTERY AT A GLANCE */
+    /* DIGITAL CLOCK & BATTERY AT A GLANCE */
     .digital-clock-widget {
       text-align: center;
       margin: 10px 0 8px 0;
@@ -380,7 +514,7 @@ HTML_TEMPLATE = """
       border: 1px solid #182232;
       border-radius: 16px;
       padding: 10px 12px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
     .impact-card-header {
       display: flex;
@@ -430,11 +564,11 @@ HTML_TEMPLATE = """
     .search-command-bar {
       background: #181d26;
       border-radius: 24px;
-      padding: 10px 16px;
+      padding: 11px 16px;
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 10px;
+      margin-bottom: 16px;
       border: 1px solid #232a38;
       box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
@@ -455,37 +589,11 @@ HTML_TEMPLATE = """
       cursor: pointer;
     }
 
-    /* QUICK CHIPS ROW */
-    .quick-chips-row {
-      display: flex;
-      gap: 6px;
-      overflow-x: auto;
-      padding-bottom: 8px;
-      margin-bottom: 10px;
-      scrollbar-width: none;
-    }
-    .quick-chips-row::-webkit-scrollbar { display: none; }
-    .android-chip {
-      background: #161b24;
-      color: #cbd5e1;
-      padding: 5px 11px;
-      border-radius: 14px;
-      font-size: 0.72rem;
-      white-space: nowrap;
-      cursor: pointer;
-      border: 1px solid #222938;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .android-chip:hover {
-      background: #202734;
-      border-color: #3b465c;
-    }
-
     /* 5. STANDARD ANDROID APP ICONS GRID (Border-Free Official SVGs) */
     .apps-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      row-gap: 16px;
+      row-gap: 18px;
       column-gap: 8px;
       margin-bottom: 16px;
       text-align: center;
@@ -681,113 +789,6 @@ HTML_TEMPLATE = """
       border-bottom-right-radius: 4px;
     }
 
-    /* MATERIAL 3 SHEETS & MODALS */
-    .material-sheet-overlay {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: #181c25;
-      border-radius: 28px 28px 0 0;
-      padding: 22px 20px;
-      border-top: 1px solid #28303f;
-      transform: translateY(100%);
-      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-      z-index: 110;
-      box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
-    }
-    .material-sheet-overlay.active { transform: translateY(0); }
-    .sheet-handle {
-      width: 36px;
-      height: 4px;
-      background: #475569;
-      border-radius: 2px;
-      margin: 0 auto 16px auto;
-    }
-    .sheet-title {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: #fff;
-      margin-bottom: 8px;
-    }
-    .sheet-desc {
-      font-size: 0.8rem;
-      color: #94a3b8;
-      line-height: 1.45;
-      margin-bottom: 14px;
-    }
-    .sheet-bullets {
-      list-style: none;
-      margin-bottom: 18px;
-    }
-    .sheet-bullets li {
-      font-size: 0.76rem;
-      color: #cbd5e1;
-      padding-left: 18px;
-      position: relative;
-      margin-bottom: 6px;
-    }
-    .sheet-bullets li::before {
-      content: "•";
-      position: absolute;
-      left: 4px;
-      color: var(--android-primary);
-      font-weight: bold;
-    }
-    .sheet-actions {
-      display: flex;
-      gap: 12px;
-    }
-    .btn-android-primary {
-      flex: 1;
-      background: var(--android-primary);
-      color: #0c0f14;
-      border: none;
-      padding: 12px;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .btn-android-secondary {
-      flex: 1;
-      background: #232b3a;
-      color: #cbd5e1;
-      border: none;
-      padding: 12px;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      cursor: pointer;
-    }
-
-    /* CALM DIGEST LIST ITEM */
-    .digest-list-item {
-      background: #1e2636;
-      border-radius: 12px;
-      padding: 10px 12px;
-      margin-bottom: 8px;
-    }
-    .digest-item-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 3px;
-    }
-    .digest-item-app {
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: #a8c7fa;
-    }
-    .digest-item-time {
-      font-size: 0.65rem;
-      color: #64748b;
-    }
-    .digest-item-body {
-      font-size: 0.75rem;
-      color: #e2e8f0;
-      line-height: 1.35;
-    }
-
     /* TOAST */
     .android-toast {
       position: absolute;
@@ -862,14 +863,14 @@ HTML_TEMPLATE = """
 
   <div class="top-header">
     <h1>📱 ZeroOS · Pure Everyday Operating System</h1>
-    <p>Zero-Leak Automatic Air-Gap · Calm Digest · Nokia 4-Day Mode · Ephemeral Disposable Sandbox</p>
+    <p>Zero-Leak Automatic Air-Gap · Quick Settings Shade · Clean Minimal Home · Nokia 4-Day Mode</p>
   </div>
 
   <div class="main-layout">
 
     <!-- REALISTIC PHONE HARDWARE -->
     <div class="phone-container">
-      <div class="hw-btn-power" onclick="triggerPowerButton()" title="Power Button (Click to trigger voice/text bar)"></div>
+      <div class="hw-btn-power" onclick="triggerPowerButton()" title="Power Button (Click to arm command bar)"></div>
       <div class="hw-btn-vol-up" onclick="showToast('Volume Up')"></div>
       <div class="hw-btn-vol-down" onclick="showToast('Volume Down')"></div>
 
@@ -879,8 +880,8 @@ HTML_TEMPLATE = """
 
         <div class="oled-screen" id="oledScreen">
 
-          <!-- 1. ANDROID STATUS BAR -->
-          <div class="android-status-bar">
+          <!-- 1. ANDROID STATUS BAR (Click to toggle Quick Settings Shade) -->
+          <div class="android-status-bar" onclick="toggleNotificationShade()" title="Click to pull down Quick Settings Notification Shade">
             <div class="status-left">
               <span id="statusClock">11:28</span>
               <span id="statusTorch" style="display:none;">🔦</span>
@@ -892,13 +893,119 @@ HTML_TEMPLATE = """
               <span id="statusBattery">🔋 88%</span>
             </div>
           </div>
+          <div class="qs-pull-hint" onclick="toggleNotificationShade()">▼ Swipe / Click for Notification Bar</div>
 
-          <!-- NOTIFICATION BANNER (Hotspot / Sensor Kill) -->
-          <div id="hotspotBanner" class="hotspot-banner" style="display:none;">
-            <div class="hotspot-banner-title">
-              <span>(((•))) Hotspot Active</span>
+          <!-- QUICK SETTINGS NOTIFICATION SHADE (PULL-DOWN) -->
+          <div id="notificationShade" class="notification-shade">
+            <div class="shade-header">
+              <div>
+                <div class="shade-time" id="shadeClock">11:28</div>
+                <div class="shade-battery" id="shadeBattery">🔋 88% · ZeroOS Kernel Shield</div>
+              </div>
+              <button class="btn-close-shade" onclick="toggleNotificationShade()">▲ Close</button>
             </div>
-            <button class="hotspot-kill-btn" onclick="sendCommand('turn off hotspot')">Stop</button>
+
+            <!-- 2x3 QUICK SETTINGS TILES (Bidirectional Toggles) -->
+            <div class="qs-grid">
+              
+              <!-- Hotspot Tile -->
+              <div class="qs-tile" id="tileHotspot" onclick="toggleFeatureTile('hotspot')">
+                <div class="qs-icon-wrap">(((•)))</div>
+                <div class="qs-tile-info">
+                  <div class="qs-tile-title">Hotspot</div>
+                  <div class="qs-tile-sub" id="subHotspot">Off</div>
+                </div>
+              </div>
+
+              <!-- Nokia Mode Tile -->
+              <div class="qs-tile" id="tileNokia" onclick="toggleFeatureTile('nokia')">
+                <div class="qs-icon-wrap">🔋</div>
+                <div class="qs-tile-info">
+                  <div class="qs-tile-title">Nokia Mode</div>
+                  <div class="qs-tile-sub" id="subNokia">Off</div>
+                </div>
+              </div>
+
+              <!-- Flashlight Tile -->
+              <div class="qs-tile" id="tileTorch" onclick="toggleFeatureTile('torch')">
+                <div class="qs-icon-wrap">🔦</div>
+                <div class="qs-tile-info">
+                  <div class="qs-tile-title">Flashlight</div>
+                  <div class="qs-tile-sub" id="subTorch">Off</div>
+                </div>
+              </div>
+
+              <!-- Grayscale Tile -->
+              <div class="qs-tile" id="tileGrayscale" onclick="toggleFeatureTile('grayscale')">
+                <div class="qs-icon-wrap">🌓</div>
+                <div class="qs-tile-info">
+                  <div class="qs-tile-title">Grayscale</div>
+                  <div class="qs-tile-sub" id="subGrayscale">Off</div>
+                </div>
+              </div>
+
+              <!-- Calm Digest Tile -->
+              <div class="qs-tile" id="tileDigest" onclick="toggleFeatureTile('digest')">
+                <div class="qs-icon-wrap">🔕</div>
+                <div class="qs-tile-info">
+                  <div class="qs-tile-title">Calm Digest</div>
+                  <div class="qs-tile-sub" id="subDigest">Active</div>
+                </div>
+              </div>
+
+              <!-- Auto Air-Gap Tile -->
+              <div class="qs-tile" id="tileAirgap" onclick="toggleFeatureTile('airgap')">
+                <div class="qs-icon-wrap">🛡️</div>
+                <div class="qs-tile-info">
+                  <div class="qs-tile-title">Auto Air-Gap</div>
+                  <div class="qs-tile-sub" id="subAirgap">Active</div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- NOTIFICATIONS SECTION -->
+            <div class="shade-notifications-section">
+              <div class="shade-section-title">Active Notifications</div>
+
+              <!-- Hotspot Card (Visible when hotspot active) -->
+              <div id="shadeHotspotCard" class="shade-notif-card" style="display:none;">
+                <div class="shade-notif-left">
+                  <span class="shade-notif-icon">(((•)))</span>
+                  <div>
+                    <div class="shade-notif-title">Portable Hotspot Active</div>
+                    <div class="shade-notif-sub" id="shadeHotspotSub">Broadcasting ZeroPhone-5G · 1 client</div>
+                  </div>
+                </div>
+                <button class="shade-notif-btn" onclick="toggleFeatureTile('hotspot')">Turn Off</button>
+              </div>
+
+              <!-- Calm Digest Card -->
+              <div class="shade-notif-card">
+                <div class="shade-notif-left">
+                  <span class="shade-notif-icon">🔕</span>
+                  <div>
+                    <div class="shade-notif-title">Calm Notification Digest</div>
+                    <div class="shade-notif-sub" id="shadeDigestSub">3 non-urgent alerts held quietly</div>
+                  </div>
+                </div>
+                <button style="background:#2563eb; color:#fff; border:none; padding:4px 10px; border-radius:10px; font-size:0.68rem; font-weight:600; cursor:pointer;" onclick="clearDigestNotifications()">Clear</button>
+              </div>
+
+              <!-- Kernel Security Shield Status -->
+              <div class="shade-notif-card">
+                <div class="shade-notif-left">
+                  <span class="shade-notif-icon">🛡️</span>
+                  <div>
+                    <div class="shade-notif-title">Zero-Leak Kernel Shield</div>
+                    <div class="shade-notif-sub">10 apps air-gapped · 0 B/s background leak</div>
+                  </div>
+                </div>
+                <span style="font-size:0.65rem; color:#34d399; font-weight:700;">SECURED</span>
+              </div>
+
+            </div>
+
           </div>
 
           <!-- FOREGROUND ACTIVE APP WINDOW -->
@@ -914,9 +1021,7 @@ HTML_TEMPLATE = """
               <button class="btn-close-app" onclick="closeActiveApp()">Close & Air-Gap</button>
             </div>
             
-            <div class="app-window-body" id="appWindowBody">
-              <!-- Rendered per app -->
-            </div>
+            <div class="app-window-body" id="appWindowBody"></div>
 
             <div class="app-window-footer">
               <button class="swipe-home-btn" onclick="closeActiveApp()">
@@ -928,7 +1033,7 @@ HTML_TEMPLATE = """
             </div>
           </div>
 
-          <!-- 2. HOME SCREEN CONTENT -->
+          <!-- 2. HOME SCREEN CONTENT (Clean & Uncluttered) -->
           <div class="home-content">
 
             <!-- 3. DIGITAL CLOCK & BATTERY AT A GLANCE -->
@@ -941,12 +1046,12 @@ HTML_TEMPLATE = """
             </div>
 
             <!-- CALM DIGEST PILL -->
-            <div class="calm-digest-pill" onclick="openCalmDigestSheet()">
+            <div class="calm-digest-pill" onclick="toggleNotificationShade()">
               <div class="digest-pill-text">
                 <span>🔕 Calm Digest</span>
                 <span class="digest-count-badge" id="digestCountBadge">3 alerts held</span>
               </div>
-              <span style="font-size:0.75rem; color:#64748b;">View ›</span>
+              <span style="font-size:0.75rem; color:#64748b;">Notification Shade ›</span>
             </div>
 
             <!-- ZERO IMPACT DASHBOARD CARD -->
@@ -957,7 +1062,7 @@ HTML_TEMPLATE = """
               </div>
               <div class="impact-grid">
                 <div class="impact-tile">
-                  <div class="impact-val" id="impactTrackers">1,420</div>
+                  <div class="impact-val" id="impactTrackers">1,448</div>
                   <div class="impact-lbl">Trackers Blocked</div>
                 </div>
                 <div class="impact-tile">
@@ -969,7 +1074,7 @@ HTML_TEMPLATE = """
                   <div class="impact-lbl">Mic Locked</div>
                 </div>
                 <div class="impact-tile">
-                  <div class="impact-val" id="impactAirgapped">8</div>
+                  <div class="impact-val" id="impactAirgapped">10</div>
                   <div class="impact-lbl">Apps Air-Gapped</div>
                 </div>
               </div>
@@ -978,22 +1083,11 @@ HTML_TEMPLATE = """
             <!-- 4. NATURAL LANGUAGE COMMAND & SEARCH BAR -->
             <div class="search-command-bar">
               <span class="search-icon">🔍</span>
-              <input type="text" id="androidSearchInput" class="search-input" placeholder="Type plain English (e.g. hotspot, nokia mode, cut mic)..." onkeydown="if(event.key==='Enter') executeSearchCommand()" />
+              <input type="text" id="androidSearchInput" class="search-input" placeholder="Type command: hotspot, nokia mode, torch, cut mic..." onkeydown="if(event.key==='Enter') executeSearchCommand()" />
               <span class="search-mic" onclick="executeSearchCommand()" title="Execute Command">↵</span>
             </div>
 
-            <!-- QUICK CHIPS ROW -->
-            <div class="quick-chips-row">
-              <div class="android-chip" onclick="quickRun('turn on hotspot')">(((•))) Hotspot</div>
-              <div class="android-chip" onclick="quickRun('nokia mode')">🔋 Nokia Mode</div>
-              <div class="android-chip" onclick="quickRun('turn on flash')">🔦 Torch</div>
-              <div class="android-chip" onclick="quickRun('turn on grayscale')">🌓 Grayscale</div>
-              <div class="android-chip" onclick="quickRun('calm digest')">🔕 Calm Digest</div>
-              <div class="android-chip" onclick="quickRun('ephemeral instagram')">🛡️ Ephemeral IG</div>
-              <div class="android-chip" onclick="quickRun('cut mic for whatsapp')">🎙️ Cut WhatsApp Mic</div>
-            </div>
-
-            <!-- 5. STANDARD ANDROID APP ICONS GRID -->
+            <!-- 5. STANDARD ANDROID APP ICONS GRID (Clean Borderless Official Logos) -->
             <div class="apps-grid">
               
               <div class="app-icon-item" onclick="launchForegroundApp('phone')">
@@ -1092,32 +1186,6 @@ HTML_TEMPLATE = """
 
           </div>
 
-          <!-- MATERIAL 3 CONFIRMATION BOTTOM SHEET -->
-          <div class="material-sheet-overlay" id="materialSheet">
-            <div class="sheet-handle"></div>
-            <div class="sheet-title" id="sheetTitle">Confirmation</div>
-            <div class="sheet-desc" id="sheetDesc">Description</div>
-            <ul class="sheet-bullets" id="sheetBullets"></ul>
-            <div class="sheet-actions">
-              <button class="btn-android-secondary" onclick="dismissSheet()">Cancel</button>
-              <button class="btn-android-primary" onclick="confirmSheetAction()">Turn On</button>
-            </div>
-          </div>
-
-          <!-- CALM DIGEST BOTTOM SHEET -->
-          <div class="material-sheet-overlay" id="digestSheet">
-            <div class="sheet-handle"></div>
-            <div class="sheet-title">🔕 Calm Notification Digest</div>
-            <div class="sheet-desc">
-              Non-urgent alerts held quietly to protect your focus and battery.
-            </div>
-            <div id="digestItemsList"></div>
-            <div class="sheet-actions" style="margin-top:12px;">
-              <button class="btn-android-secondary" onclick="dismissDigestSheet()">Close</button>
-              <button class="btn-android-primary" onclick="clearDigestSheet()">Mark All Read</button>
-            </div>
-          </div>
-
           <!-- TOAST -->
           <div class="android-toast" id="androidToast">Action performed</div>
 
@@ -1132,11 +1200,11 @@ HTML_TEMPLATE = """
       <div class="side-box">
         <div class="side-box-title">🎨 Display Themes (Screen Remains 100% OLED Black)</div>
         <div style="display:flex; flex-wrap:wrap; gap:8px;">
-          <button class="android-chip" onclick="setPalette('official')">🌈 Official Colors</button>
-          <button class="android-chip" onclick="setPalette('monochrome')">⚪ Zen White (Mono)</button>
-          <button class="android-chip" onclick="setPalette('amber')">🟡 Warm Amber (Night)</button>
-          <button class="android-chip" onclick="setPalette('emerald')">🟢 Phosphor Emerald</button>
-          <button class="android-chip" onclick="setPalette('cyan')">🔵 Nordic Glacier Cyan</button>
+          <button style="background:#161b24; color:#fff; border:1px solid #222b3b; padding:6px 12px; border-radius:12px; font-size:0.75rem; cursor:pointer;" onclick="setPalette('official')">🌈 Official Colors</button>
+          <button style="background:#161b24; color:#fff; border:1px solid #222b3b; padding:6px 12px; border-radius:12px; font-size:0.75rem; cursor:pointer;" onclick="setPalette('monochrome')">⚪ Zen White</button>
+          <button style="background:#161b24; color:#fff; border:1px solid #222b3b; padding:6px 12px; border-radius:12px; font-size:0.75rem; cursor:pointer;" onclick="setPalette('amber')">🟡 Warm Amber</button>
+          <button style="background:#161b24; color:#fff; border:1px solid #222b3b; padding:6px 12px; border-radius:12px; font-size:0.75rem; cursor:pointer;" onclick="setPalette('emerald')">🟢 Phosphor Emerald</button>
+          <button style="background:#161b24; color:#fff; border:1px solid #222b3b; padding:6px 12px; border-radius:12px; font-size:0.75rem; cursor:pointer;" onclick="setPalette('cyan')">🔵 Glacier Cyan</button>
         </div>
       </div>
 
@@ -1171,12 +1239,10 @@ HTML_TEMPLATE = """
 
       <!-- USER GUIDANCE -->
       <div class="side-box">
-        <div class="side-box-title">💡 How Everyday Users Experience ZeroOS</div>
+        <div class="side-box-title">💡 How to Test the Controls</div>
         <div style="font-size:0.78rem; line-height:1.6; color:#cbd5e1;">
-          <p>• <b>Tap Any App:</b> Tap <i>WhatsApp</i> or <i>Instagram</i>. Notice how it opens instantly. When you click <b>Swipe Home to Air-Gap</b>, watch the terminal slam the door (0 B/s data, mic locked, 0% CPU).</p>
-          <p style="margin-top:6px;">• <b>Disposable Apps:</b> Try typing <code>ephemeral instagram</code>. It runs in an isolated RAM overlay and permanently vaporizes all cookies upon exit.</p>
-          <p style="margin-top:6px;">• <b>Nokia Mode:</b> Type <code>nokia mode</code>. Extends battery to 4–6 days with 1-bit monochrome and 60Hz throttling.</p>
-          <p style="margin-top:6px;">• <b>Calm Digest:</b> Click the <i>Calm Digest</i> pill to view non-urgent notifications held quietly.</p>
+          <p>• <b>Notification Bar / Quick Settings:</b> Click the <b>Top Status Bar</b> (or the "▼ Swipe for Notification Bar" text) to pull down the Android Quick Settings tiles. Click any tile (Hotspot, Nokia Mode, Torch, Grayscale) to <b>toggle ON</b>, and click it again to <b>toggle OFF</b>.</p>
+          <p style="margin-top:6px;">• <b>Clean Natural Command Bar:</b> Notice the cluttered buttons are gone from the home screen. You can type <code>hotspot</code>, <code>nokia mode</code>, <code>torch</code>, <code>grayscale</code>, or <code>cut mic for whatsapp</code> directly into the search bar, and pressing Enter toggles them on and off!</p>
         </div>
       </div>
 
@@ -1202,7 +1268,6 @@ HTML_TEMPLATE = """
     };
 
     let state = {};
-    let pendingAction = null;
 
     async function loadState() {
       const res = await fetch('/api/state');
@@ -1220,11 +1285,15 @@ HTML_TEMPLATE = """
       });
     }
 
+    function toggleNotificationShade() {
+      const shade = document.getElementById('notificationShade');
+      shade.classList.toggle('open');
+    }
+
     function renderUI() {
       // 1. Status Bar & Battery
       document.getElementById('statusTorch').style.display = state.is_torch_on ? 'inline-block' : 'none';
       document.getElementById('statusHotspot').style.display = state.is_hotspot_on ? 'inline-flex' : 'none';
-      document.getElementById('hotspotBanner').style.display = state.is_hotspot_on ? 'flex' : 'none';
 
       const oled = document.getElementById('oledScreen');
       if (state.is_nokia_mode) {
@@ -1249,11 +1318,23 @@ HTML_TEMPLATE = """
 
       document.getElementById('statHotspot').innerText = state.is_hotspot_on ? 'ON (1 client)' : 'OFF';
 
-      // 2. Calm Digest Badge
-      const digestCount = state.calm_digest_items ? state.calm_digest_items.length : 0;
-      document.getElementById('digestCountBadge').innerText = `${digestCount} non-urgent held`;
+      // 2. Quick Settings Tiles State in Notification Shade
+      updateTileUI('tileHotspot', 'subHotspot', state.is_hotspot_on, state.hotspot_ssid, 'Off');
+      updateTileUI('tileNokia', 'subNokia', state.is_nokia_mode, '5.8 Days (60Hz)', 'Off');
+      updateTileUI('tileTorch', 'subTorch', state.is_torch_on, 'On', 'Off');
+      updateTileUI('tileGrayscale', 'subGrayscale', state.is_grayscale, 'Monochrome', 'Off');
+      updateTileUI('tileDigest', 'subDigest', state.calm_digest_enabled, 'Active', 'Off');
+      updateTileUI('tileAirgap', 'subAirgap', state.auto_airgap_enabled, 'Active', 'Paused');
 
-      // 3. Impact Dashboard
+      // 3. Shade Notifications
+      const hotspotCard = document.getElementById('shadeHotspotCard');
+      hotspotCard.style.display = state.is_hotspot_on ? 'flex' : 'none';
+
+      const digestCount = state.calm_digest_items ? state.calm_digest_items.length : 0;
+      document.getElementById('digestCountBadge').innerText = `${digestCount} held quietly`;
+      document.getElementById('shadeDigestSub').innerText = `${digestCount} non-urgent alerts held quietly`;
+
+      // 4. Impact Dashboard
       if (state.impact_stats) {
         document.getElementById('impactTrackers').innerText = state.impact_stats.trackers_blocked.toLocaleString();
         document.getElementById('impactBattery').innerText = `${state.impact_stats.battery_hours_saved}h`;
@@ -1261,7 +1342,7 @@ HTML_TEMPLATE = """
         document.getElementById('impactAirgapped').innerText = state.impact_stats.airgapped_apps;
       }
 
-      // 4. Foreground App Overlay
+      // 5. Foreground App Overlay
       const appWin = document.getElementById('activeAppWindow');
       if (state.active_app) {
         appWin.style.display = 'flex';
@@ -1270,7 +1351,7 @@ HTML_TEMPLATE = """
         appWin.style.display = 'none';
       }
 
-      // 5. App Shield Badges
+      // 6. App Shield Badges
       if (state.app_shields) {
         Object.keys(state.app_shields).forEach(k => {
           const s = state.app_shields[k];
@@ -1281,10 +1362,36 @@ HTML_TEMPLATE = """
         });
       }
 
-      // 6. Kernel terminal
+      // 7. Kernel terminal
       const logsBox = document.getElementById('kernelLogs');
       logsBox.innerHTML = state.kernel_logs.map(l => `<div>${l}</div>`).join('');
       logsBox.scrollTop = logsBox.scrollHeight;
+    }
+
+    function updateTileUI(tileId, subId, isActive, activeText, inactiveText) {
+      const tile = document.getElementById(tileId);
+      const sub = document.getElementById(subId);
+      if (!tile || !sub) return;
+
+      if (isActive) {
+        tile.classList.add('active');
+        sub.innerText = activeText;
+      } else {
+        tile.classList.remove('active');
+        sub.innerText = inactiveText;
+      }
+    }
+
+    async function toggleFeatureTile(featureName) {
+      const res = await fetch('/api/toggle_feature', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feature: featureName })
+      });
+      const data = await res.json();
+      state = data.state;
+      renderUI();
+      showToast(data.message);
     }
 
     function renderActiveAppContent(appKey, isEphemeral) {
@@ -1358,34 +1465,11 @@ HTML_TEMPLATE = """
       showToast(data.message);
     }
 
-    function openCalmDigestSheet() {
-      const listEl = document.getElementById('digestItemsList');
-      if (state.calm_digest_items && state.calm_digest_items.length > 0) {
-        listEl.innerHTML = state.calm_digest_items.map(item => `
-          <div class="digest-list-item">
-            <div class="digest-item-top">
-              <span class="digest-item-app">${item.app}</span>
-              <span class="digest-item-time">${item.time}</span>
-            </div>
-            <div class="digest-item-body">${item.desc}</div>
-          </div>
-        `).join('');
-      } else {
-        listEl.innerHTML = `<div style="text-align:center; padding:16px; color:#64748b; font-size:0.8rem;">🎉 All calm! Zero pending notifications.</div>`;
-      }
-      document.getElementById('digestSheet').classList.add('active');
-    }
-
-    function dismissDigestSheet() {
-      document.getElementById('digestSheet').classList.remove('active');
-    }
-
-    async function clearDigestSheet() {
+    async function clearDigestNotifications() {
       const res = await fetch('/api/clear_digest', { method: 'POST' });
       const data = await res.json();
       state = data.state;
       renderUI();
-      dismissDigestSheet();
       showToast(data.message);
     }
 
@@ -1398,10 +1482,7 @@ HTML_TEMPLATE = """
       });
       const data = await res.json();
       state = data.state;
-
-      if (data.confirmation_required) {
-        showConfirmationSheet(data.confirm_title, data.confirm_desc, data.confirm_bullets, data.action_name);
-      } else if (data.message) {
+      if (data.message) {
         showToast(data.message);
       }
       renderUI();
@@ -1429,35 +1510,6 @@ HTML_TEMPLATE = """
       showToast("⚡ Power Button Long-Press: Command Bar Armed");
     }
 
-    function showConfirmationSheet(title, desc, bullets, actionName) {
-      document.getElementById('sheetTitle').innerText = title;
-      document.getElementById('sheetDesc').innerText = desc || '';
-      document.getElementById('sheetBullets').innerHTML = bullets.map(b => `<li>${b}</li>`).join('');
-      document.getElementById('materialSheet').classList.add('active');
-      pendingAction = actionName;
-    }
-
-    function dismissSheet() {
-      document.getElementById('materialSheet').classList.remove('active');
-      pendingAction = null;
-    }
-
-    async function confirmSheetAction() {
-      document.getElementById('materialSheet').classList.remove('active');
-      if (!pendingAction) return;
-
-      const res = await fetch('/api/confirm_action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: pendingAction })
-      });
-      const data = await res.json();
-      state = data.state;
-      showToast(data.message);
-      renderUI();
-      pendingAction = null;
-    }
-
     function showToast(msg) {
       const toast = document.getElementById('androidToast');
       toast.innerText = msg;
@@ -1471,6 +1523,7 @@ HTML_TEMPLATE = """
       const now = new Date();
       const timeStr = now.toTimeString().slice(0, 5);
       document.getElementById('statusClock').innerText = timeStr;
+      document.getElementById('shadeClock').innerText = timeStr;
       document.getElementById('widgetClock').innerText = timeStr;
     }, 10000);
   </script>
@@ -1485,6 +1538,56 @@ def index():
 @app.route("/api/state")
 def get_state():
     return jsonify(STATE)
+
+@app.route("/api/toggle_feature", methods=["POST"])
+def toggle_feature():
+    data = request.json or {}
+    feat = data.get("feature")
+
+    if feat == "hotspot":
+        STATE["is_hotspot_on"] = not STATE["is_hotspot_on"]
+        act = "ON" if STATE["is_hotspot_on"] else "OFF"
+        if STATE["is_hotspot_on"]:
+            STATE["kernel_logs"].append(f"[Tethering] Hotspot broadcast active: SSID '{STATE['hotspot_ssid']}'")
+        else:
+            STATE["kernel_logs"].append("[Tethering] Hotspot disabled. Radios offline.")
+        msg = f"(((•))) Hotspot turned {act}."
+
+    elif feat == "torch":
+        STATE["is_torch_on"] = not STATE["is_torch_on"]
+        act = "ON" if STATE["is_torch_on"] else "OFF"
+        STATE["kernel_logs"].append(f"[GPIO] Flashlight toggled {act}")
+        msg = f"🔦 Flashlight turned {act}."
+
+    elif feat == "nokia":
+        STATE["is_nokia_mode"] = not STATE["is_nokia_mode"]
+        STATE["battery_days_remaining"] = 5.8 if STATE["is_nokia_mode"] else 4.2
+        act = "ON" if STATE["is_nokia_mode"] else "OFF"
+        STATE["kernel_logs"].append(f"[PowerHAL] Nokia 4-Day Mode toggled {act} (60Hz / 1-bit monochrome)")
+        msg = f"🔋 Nokia Mode turned {act}."
+
+    elif feat == "grayscale":
+        STATE["is_grayscale"] = not STATE["is_grayscale"]
+        act = "ON" if STATE["is_grayscale"] else "OFF"
+        STATE["kernel_logs"].append(f"[Daltonizer] Grayscale display mode toggled {act}")
+        msg = f"🌓 Grayscale turned {act}."
+
+    elif feat == "digest":
+        STATE["calm_digest_enabled"] = not STATE["calm_digest_enabled"]
+        act = "ACTIVE" if STATE["calm_digest_enabled"] else "PAUSED"
+        STATE["kernel_logs"].append(f"[CalmDigest] Notification batching toggled {act}")
+        msg = f"🔕 Calm Digest {act}."
+
+    elif feat == "airgap":
+        STATE["auto_airgap_enabled"] = not STATE["auto_airgap_enabled"]
+        act = "ACTIVE" if STATE["auto_airgap_enabled"] else "PAUSED"
+        STATE["kernel_logs"].append(f"[AutoAirGap] Automatic zero-leak policy {act}")
+        msg = f"🛡️ Auto Air-Gap policy {act}."
+
+    else:
+        msg = "Unknown feature toggle."
+
+    return jsonify({"success": True, "message": msg, "state": STATE})
 
 @app.route("/api/launch_app", methods=["POST"])
 def launch_app():
@@ -1567,76 +1670,77 @@ def process_command():
         STATE["kernel_logs"].append(f"[THEME] Applied surface palette: {STATE['palette']}")
         return jsonify({"success": True, "message": msg, "state": STATE})
 
-    # HARDWARE: FLASHLIGHT / TORCH
+    # HARDWARE: FLASHLIGHT / TORCH (BIDIRECTIONAL TOGGLE)
     if "flash" in lower or "torch" in lower:
-        is_off = "off" in lower or "stop" in lower or "disable" in lower
-        STATE["is_torch_on"] = not is_off
+        if "off" in lower or "stop" in lower or "disable" in lower:
+            STATE["is_torch_on"] = False
+        elif "on" in lower or "start" in lower or "enable" in lower:
+            STATE["is_torch_on"] = True
+        else:
+            STATE["is_torch_on"] = not STATE["is_torch_on"]  # Toggle!
         msg = "🔦 Flashlight turned ON." if STATE["is_torch_on"] else "🔦 Flashlight turned OFF."
         STATE["kernel_logs"].append(f"[SYS_GPIO] cameraManager.setTorchMode(0, {STATE['is_torch_on']}) -> SUCCESS")
         return jsonify({"success": True, "message": msg, "state": STATE})
 
-    # HARDWARE: WI-FI HOTSPOT
+    # HARDWARE: WI-FI HOTSPOT (BIDIRECTIONAL TOGGLE)
     if "hotspot" in lower or "tether" in lower:
-        is_off = "off" in lower or "stop" in lower or "disable" in lower
-        STATE["is_hotspot_on"] = not is_off
+        if "off" in lower or "stop" in lower or "disable" in lower:
+            STATE["is_hotspot_on"] = False
+        elif "on" in lower or "start" in lower or "enable" in lower:
+            STATE["is_hotspot_on"] = True
+        else:
+            STATE["is_hotspot_on"] = not STATE["is_hotspot_on"]  # Toggle!
         if STATE["is_hotspot_on"]:
             STATE["kernel_logs"].append(f"[HOSTAPD] Broadcasting SSID='{STATE['hotspot_ssid']}', WPA3-SAE (5GHz)")
-            STATE["kernel_logs"].append("[IPTABLES] iptables -t nat -A POSTROUTING -s 192.168.43.0/24 -o rmnet_data0 -j MASQUERADE")
             msg = f"(((•))) Hotspot ACTIVE: Broadcasting '{STATE['hotspot_ssid']}'. 1 device connected."
         else:
             STATE["kernel_logs"].append("[HOSTAPD] hostapd daemon stopped. AP interface wlan0 DOWN.")
             msg = "(((•))) Hotspot turned OFF."
         return jsonify({"success": True, "message": msg, "state": STATE})
 
-    # NOKIA 4-6 DAY BATTERY MODE
-    if "nokia" in lower or "deep sleep" in lower:
-        is_off = "off" in lower or "exit" in lower or "disable" in lower
-        if is_off:
+    # NOKIA 4-6 DAY BATTERY MODE (BIDIRECTIONAL TOGGLE)
+    if "nokia" in lower:
+        if "off" in lower or "exit" in lower or "disable" in lower:
             STATE["is_nokia_mode"] = False
             STATE["battery_days_remaining"] = 4.2
             STATE["kernel_logs"].append("[CPUFREQ] Restored normal governor. 120Hz display online.")
-            return jsonify({"success": True, "message": "Nokia Mode deactivated. Full color & 120Hz restored.", "state": STATE})
+            msg = "Nokia Mode deactivated. Full color & 120Hz restored."
+        elif "on" in lower or "enable" in lower:
+            STATE["is_nokia_mode"] = True
+            STATE["battery_days_remaining"] = 5.8
+            STATE["kernel_logs"].append("[CPUFREQ] Scaled governor to powersave. Deep Linux C-states forced.")
+            msg = "🔋 Nokia 5-Day Mode turned ON. Display clamped to 60Hz 1-bit monochrome."
         else:
-            return jsonify({
-                "confirmation_required": True,
-                "confirm_title": "Turn on Nokia Mode?",
-                "confirm_desc": "Forces CPU into deep Linux C-states with 60Hz 1-bit monochrome display.",
-                "confirm_bullets": [
-                    "Extends battery longevity to 4–6 full days.",
-                    "Disables 5G radios (drops to low-power VoLTE).",
-                    "Incoming phone calls and SMS messages still ring 100% reliably."
-                ],
-                "action_name": "enable_nokia_mode",
-                "state": STATE
-            })
+            STATE["is_nokia_mode"] = not STATE["is_nokia_mode"]  # Toggle!
+            STATE["battery_days_remaining"] = 5.8 if STATE["is_nokia_mode"] else 4.2
+            act = "ON" if STATE["is_nokia_mode"] else "OFF"
+            STATE["kernel_logs"].append(f"[PowerHAL] Nokia Mode toggled {act}.")
+            msg = f"🔋 Nokia Mode turned {act}."
+        return jsonify({"success": True, "message": msg, "state": STATE})
 
-    # GRAYSCALE
+    # GRAYSCALE (BIDIRECTIONAL TOGGLE)
     if "grayscale" in lower or "monochrome" in lower:
-        is_off = "off" in lower or "disable" in lower
-        if is_off:
+        if "off" in lower or "disable" in lower:
             STATE["is_grayscale"] = False
             STATE["kernel_logs"].append("[DALTONIZER] Settings.Secure.putInt('accessibility_display_daltonizer_enabled', 0)")
-            return jsonify({"success": True, "message": "🌈 Color display restored.", "state": STATE})
+            msg = "🌈 Color display restored."
+        elif "on" in lower or "enable" in lower:
+            STATE["is_grayscale"] = True
+            STATE["kernel_logs"].append("[DALTONIZER] Settings.Secure.putInt('accessibility_display_daltonizer_enabled', 1)")
+            msg = "🌓 Grayscale Mode turned ON."
         else:
-            return jsonify({
-                "confirmation_required": True,
-                "confirm_title": "Turn on Grayscale?",
-                "confirm_desc": "Converts all screen pixels to monochrome black & white.",
-                "confirm_bullets": [
-                    "Eliminates dopamine triggers and screen addiction.",
-                    "Saves up to 18% OLED battery power."
-                ],
-                "action_name": "enable_grayscale",
-                "state": STATE
-            })
+            STATE["is_grayscale"] = not STATE["is_grayscale"]  # Toggle!
+            act = "ON" if STATE["is_grayscale"] else "OFF"
+            STATE["kernel_logs"].append(f"[Daltonizer] Grayscale toggled {act}.")
+            msg = f"🌓 Grayscale turned {act}."
+        return jsonify({"success": True, "message": msg, "state": STATE})
 
-    # CALM DIGEST COMMAND
+    # CALM DIGEST
     if "calm" in lower or "digest" in lower:
-        return jsonify({
-            "success": True,
-            "message": "🔕 Calm Digest active: Non-urgent alerts are bundled into scheduled quiet batches.",
-            "state": STATE
-        })
+        STATE["calm_digest_enabled"] = not STATE["calm_digest_enabled"]
+        act = "ACTIVE" if STATE["calm_digest_enabled"] else "PAUSED"
+        msg = f"🔕 Calm Digest is now {act}."
+        return jsonify({"success": True, "message": msg, "state": STATE})
 
     # EPHEMERAL APP LAUNCH
     if "ephemeral" in lower or "disposable" in lower or "temp " in lower:
@@ -1656,11 +1760,25 @@ def process_command():
             app_obj = STATE["app_shields"][t]
             app_obj["mic_muted"] = True
             STATE["kernel_logs"].append(f"[AppOps] cmd appops set {app_obj['package']} RECORD_AUDIO deny -> REGISTER LOCKED")
-            STATE["kernel_logs"].append(f"[AudioHAL] Fed digital silence (/dev/zero) to UID PCM audio stream.")
+            STATE["kernel_logs"].append("[AudioHAL] Fed digital silence (/dev/zero) to UID PCM audio stream.")
         names = [STATE["app_shields"][t]["name"] for t in targets]
         return jsonify({
             "success": True,
             "message": f"🎙️ Microphone hardware register LOCKED for: {', '.join(names)}. Audio feeds dead silence.",
+            "state": STATE
+        })
+
+    # RESTORE MIC FOR APPS
+    if has_mic_word and any(w in lower for w in ["unmute", "allow", "restore"]):
+        targets = [k for k in STATE["app_shields"].keys() if k in lower] or ["whatsapp"]
+        for t in targets:
+            app_obj = STATE["app_shields"][t]
+            app_obj["mic_muted"] = False
+            STATE["kernel_logs"].append(f"[AppOps] cmd appops set {app_obj['package']} RECORD_AUDIO allow")
+        names = [STATE["app_shields"][t]["name"] for t in targets]
+        return jsonify({
+            "success": True,
+            "message": f"🎙️ Microphone restored for: {', '.join(names)}.",
             "state": STATE
         })
 
@@ -1709,20 +1827,6 @@ def launch_app_internal(app_key, is_ephemeral=False):
     else:
         msg = f"Opened {app_name}. Automatic Air-Gap will freeze background on exit."
     return jsonify({"success": True, "message": msg, "state": STATE})
-
-@app.route("/api/confirm_action", methods=["POST"])
-def confirm_action():
-    action = (request.json or {}).get("action")
-    if action == "enable_nokia_mode":
-        STATE["is_nokia_mode"] = True
-        STATE["battery_days_remaining"] = 5.8
-        STATE["kernel_logs"].append("[CPUFREQ] Governor scaled to powersave. Deep Linux C-states forced.")
-        return jsonify({"success": True, "message": "🔋 Nokia 5-Day Mode turned ON. Display clamped to 60Hz 1-bit monochrome.", "state": STATE})
-    elif action == "enable_grayscale":
-        STATE["is_grayscale"] = True
-        STATE["kernel_logs"].append("[DALTONIZER] Settings.Secure.putInt('accessibility_display_daltonizer_enabled', 1)")
-        return jsonify({"success": True, "message": "🌓 Grayscale Mode turned ON.", "state": STATE})
-    return jsonify({"success": False, "message": "Unknown action", "state": STATE})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5077))

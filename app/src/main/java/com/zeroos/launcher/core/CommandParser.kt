@@ -6,11 +6,11 @@ import java.util.Locale
  * Data model for parsed user intents in ZeroOS.
  */
 sealed class ZeroCommand {
-    data class ToggleFlashlight(val enable: Boolean) : ZeroCommand()
-    data class ToggleHotspot(val enable: Boolean) : ZeroCommand()
-    data class RequestGrayscale(val enable: Boolean) : ZeroCommand()
+    data class ToggleFlashlight(val explicitEnable: Boolean? = null) : ZeroCommand()
+    data class ToggleHotspot(val explicitEnable: Boolean? = null) : ZeroCommand()
+    data class RequestGrayscale(val explicitEnable: Boolean? = null) : ZeroCommand()
     data class RequestReboot(val immediate: Boolean = false) : ZeroCommand()
-    data class RequestNokiaMode(val enable: Boolean) : ZeroCommand()
+    data class RequestNokiaMode(val explicitEnable: Boolean? = null) : ZeroCommand()
     data class CutMobileData(val targetApps: List<String>) : ZeroCommand()
     data class RestoreMobileData(val targetApps: List<String>) : ZeroCommand()
     data class MuteMicrophone(val targetApps: List<String>) : ZeroCommand()
@@ -18,7 +18,7 @@ sealed class ZeroCommand {
     data class FreezeApp(val targetApps: List<String>) : ZeroCommand()
     data class UnfreezeApp(val targetApps: List<String>) : ZeroCommand()
     data class ToggleMicroWindow(val enable: Boolean) : ZeroCommand()
-    data class ToggleCalmDigest(val enable: Boolean) : ZeroCommand()
+    data class ToggleCalmDigest(val explicitEnable: Boolean? = null) : ZeroCommand()
     data class LaunchEphemeralApp(val appQuery: String) : ZeroCommand()
     object ShowImpactDashboard : ZeroCommand()
     object AuditSpying : ZeroCommand()
@@ -43,20 +43,26 @@ object CommandParser {
 
         // 1. HARDWARE: FLASHLIGHT / TORCH
         if (lower.contains("flashlight") || lower.contains("torch") || lower.contains("flash")) {
-            val isOff = lower.contains("off") || lower.contains("stop") || lower.contains("disable")
-            return ZeroCommand.ToggleFlashlight(!isOff)
+            val explicit = if (lower.contains("off") || lower.contains("stop") || lower.contains("disable")) false
+                           else if (lower.contains("on") || lower.contains("start") || lower.contains("enable")) true
+                           else null
+            return ZeroCommand.ToggleFlashlight(explicit)
         }
 
         // 1b. HARDWARE: WI-FI HOTSPOT / TETHERING
         if (lower.contains("hotspot") || lower.contains("tethering") || lower.contains("tether") || lower == "/hotspot") {
-            val isOff = lower.contains("off") || lower.contains("stop") || lower.contains("disable")
-            return ZeroCommand.ToggleHotspot(!isOff)
+            val explicit = if (lower.contains("off") || lower.contains("stop") || lower.contains("disable")) false
+                           else if (lower.contains("on") || lower.contains("start") || lower.contains("enable")) true
+                           else null
+            return ZeroCommand.ToggleHotspot(explicit)
         }
 
         // 2. HARDWARE: GRAYSCALE (Triggers Confirmation Dialog)
         if (lower.contains("grayscale") || lower.contains("monochrome") || lower.contains("black and white")) {
-            val isOff = lower.contains("off") || lower.contains("disable") || lower.contains("exit")
-            return ZeroCommand.RequestGrayscale(!isOff)
+            val explicit = if (lower.contains("off") || lower.contains("disable") || lower.contains("exit")) false
+                           else if (lower.contains("on") || lower.contains("enable")) true
+                           else null
+            return ZeroCommand.RequestGrayscale(explicit)
         }
 
         // 3. HARDWARE: RESTART / REBOOT
@@ -66,8 +72,10 @@ object CommandParser {
 
         // 4. BATTERY: NOKIA MODE / DEEP SLEEP
         if (lower.contains("nokia") || lower.contains("deep sleep") || lower == "/nokia-mode") {
-            val isOff = lower.contains("off") || lower.contains("exit")
-            return ZeroCommand.RequestNokiaMode(!isOff)
+            val explicit = if (lower.contains("off") || lower.contains("exit") || lower.contains("disable")) false
+                           else if (lower.contains("on") || lower.contains("enable")) true
+                           else null
+            return ZeroCommand.RequestNokiaMode(explicit)
         }
 
         // 5. DISPLAY: MICRO-WINDOW / 0W SUB-DISPLAY
@@ -93,8 +101,10 @@ object CommandParser {
 
         // 7c. ATTENTION: CALM DIGEST
         if (lower.contains("calm digest") || lower.contains("digest") || lower.contains("calm mode") || lower == "/digest") {
-            val isOff = lower.contains("off") || lower.contains("disable") || lower.contains("stop")
-            return ZeroCommand.ToggleCalmDigest(!isOff)
+            val explicit = if (lower.contains("off") || lower.contains("disable") || lower.contains("stop")) false
+                           else if (lower.contains("on") || lower.contains("enable")) true
+                           else null
+            return ZeroCommand.ToggleCalmDigest(explicit)
         }
 
         // 7d. SANDBOX: EPHEMERAL APP LAUNCH
