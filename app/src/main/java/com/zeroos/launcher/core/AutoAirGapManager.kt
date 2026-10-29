@@ -41,6 +41,9 @@ class AutoAirGapManager(private val context: Context) {
                 // Flush iptables drop rule for this app
                 KernelShield.executeRootCommand("iptables -D OUTPUT -m owner --uid-owner $uid -j DROP || true")
                 KernelShield.executeRootCommand("ip6tables -D OUTPUT -m owner --uid-owner $uid -j DROP || true")
+
+                // Single-Session Permission Grant (PC-style: Active strictly while in foreground)
+                SingleSessionPermissionManager(context).onAppForeground(packageName, uid)
             }
         } catch (e: Exception) {
             Log.e(tag, "Failed to restore app on foreground", e)
@@ -62,8 +65,8 @@ class AutoAirGapManager(private val context: Context) {
                 KernelShield.executeRootCommand("iptables -I OUTPUT -m owner --uid-owner $uid -j DROP")
                 KernelShield.executeRootCommand("ip6tables -I OUTPUT -m owner --uid-owner $uid -j DROP")
 
-                // 2. Lock microphone hardware register
-                KernelShield.executeRootCommand("cmd appops set $packageName RECORD_AUDIO deny")
+                // 2. Automatically revoke Location, Mic, and Camera hardware access (PC-style Single-Session Ephemeral Grant)
+                SingleSessionPermissionManager(context).onAppClosed(packageName, uid)
 
                 // 3. Freeze/Suspend background execution to eliminate CPU wakelocks
                 KernelShield.executeRootCommand("am force-stop $packageName || pm suspend $packageName")
