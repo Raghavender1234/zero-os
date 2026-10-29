@@ -1757,6 +1757,14 @@ HTML_TEMPLATE = """
               </div>
             </div>
 
+            <div class="settings-card" onclick="showToast('☁️ Google Account: Contacts & Calendar Synced (Telemetry Blocked)')">
+              <div class="settings-icon" style="background:#ea4335; color:#fff; font-weight:700;">G</div>
+              <div class="settings-content">
+                <div class="settings-title">Google Account & Cloud Sync</div>
+                <div class="settings-sub">Signed in: <b>user@gmail.com</b> · Contacts & Calendar: <b>SYNCED</b> · Ad Trackers: <b>BLOCKED</b></div>
+              </div>
+            </div>
+
             <div class="settings-card" onclick="quickRun('about phone')">
               <div class="settings-icon" style="background:#475569; color:#fff;">📱</div>
               <div class="settings-content">
