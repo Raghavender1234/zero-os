@@ -47,9 +47,17 @@ jobs:
           test -f aosp/device/zero/zero_arm64/overlay/frameworks/base/core/res/res/values/config.xml
           echo "AOSP Treble configuration valid."
 
-      - name: Upload ZeroOS System Package Artifact
+      - name: Package ZeroOS Release Bundle & Checksums
+        run: |
+          mkdir -p release_bundle
+          cp -r aosp/keys/avb_pkmd.bin release_bundle/ || true
+          find app/build/outputs/apk/ -name "*.apk" -exec cp {} release_bundle/ \; || true
+          cd release_bundle && sha256sum * > SHA256SUMS.txt || true
+          ls -la
+
+      - name: Upload ZeroOS Production Release Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ZeroOS-System-Package
-          path: app/build/outputs/apk/**/*.apk
+          name: ZeroOS-Production-Package
+          path: release_bundle/*
           if-no-files-found: warn
