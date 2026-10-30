@@ -14,6 +14,7 @@ sealed class ZeroCommand {
     data class CutMobileData(val targetApps: List<String>) : ZeroCommand()
     data class RestoreMobileData(val targetApps: List<String>) : ZeroCommand()
     data class MuteMicrophone(val targetApps: List<String>) : ZeroCommand()
+    data class UnmuteMicrophone(val targetApps: List<String>) : ZeroCommand()
     data class KillCamera(val targetApps: List<String>) : ZeroCommand()
     data class FreezeApp(val targetApps: List<String>) : ZeroCommand()
     data class UnfreezeApp(val targetApps: List<String>) : ZeroCommand()
@@ -123,7 +124,13 @@ object CommandParser {
             return ZeroCommand.RestoreMobileData(apps)
         }
 
-        // 9. SENSOR: MUTE / CUT MICROPHONE
+        // 9. SENSOR: UNMUTE MICROPHONE (BIDIRECTIONAL RESTORE)
+        if (lower.contains("unmute mic") || lower.contains("un-mute mic") || lower.contains("allow mic") || lower.contains("restore mic") || lower.contains("turn on mic") || lower.contains("unmute audio") || lower.startsWith("/unmute-mic")) {
+            val apps = extractAppTargets(lower, listOf("unmute mic for", "unmute mic to", "restore mic for", "allow mic for", "turn on mic for", "/unmute-mic"))
+            return ZeroCommand.UnmuteMicrophone(apps)
+        }
+
+        // SENSOR: MUTE / CUT MICROPHONE
         if (lower.contains("cut mic") || lower.contains("mute mic") || lower.contains("kill mic") || lower.contains("block mic") || lower.contains("cut audio") || lower.contains("mute audio") || lower.contains("cut microphone") || lower.startsWith("/mute-mic")) {
             val apps = extractAppTargets(lower, listOf("cut mic for", "cut mic to", "mute mic for", "kill mic for", "block mic for", "cut microphone for", "mute audio for", "/mute-mic"))
             return ZeroCommand.MuteMicrophone(apps)

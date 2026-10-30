@@ -986,7 +986,7 @@ HTML_TEMPLATE = """
       margin: 0 auto;
     }
     .dial-key {
-      background: #131923;
+      background: #171717;
       border-radius: 50%;
       width: 58px;
       height: 58px;
@@ -997,11 +997,19 @@ HTML_TEMPLATE = """
       font-weight: 500;
       color: #fff;
       cursor: pointer;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       margin: 0 auto;
-      transition: background 0.1s;
+      transition: none !important;
+      animation: none !important;
+      outline: none;
+      user-select: none;
     }
-    .dial-key:hover { background: #202b3d; }
+    .dial-key:hover, .dial-key:active, .dial-key:focus {
+      background: #171717 !important;
+      transform: none !important;
+      filter: none !important;
+      outline: none !important;
+    }
     .call-btn-green {
       background: #10b981;
       color: #000;
@@ -2644,16 +2652,41 @@ def process_command():
     SOCIAL_MEDIA_APPS = ["instagram", "tiktok", "youtube", "whatsapp"]
     ALL_SHIELD_APPS = list(STATE["app_shields"].keys())
 
-    # CUT / MUTE MIC FOR APPS (Supports specific apps, 'all social media', 'all apps')
-    has_mic_word = any(w in lower for w in ["mic", "microphone", "audio", "listen", "record"])
-    has_cut_word = any(w in lower for w in ["cut", "block", "kill", "stop", "disable", "mute", "turn off"])
-    if has_mic_word and has_cut_word:
-        if "social" in lower:
-            targets = SOCIAL_MEDIA_APPS
-        elif "all" in lower or "everywhere" in lower:
+    # BIDIRECTIONAL MIC ENGINE (UNMUTE & MUTE)
+    has_unmute = any(w in lower for w in ["unmute", "un-mute", "allow", "restore", "turn on mic", "enable mic", "enable microphone"])
+    has_mute = not has_unmute and any(w in lower for w in ["mute", "cut mic", "block mic", "kill mic", "disable mic", "turn off mic"])
+    has_toggle = any(w in lower for w in ["toggle mic", "switch mic", "change mic"])
+
+    # 1. UNMUTE MIC
+    if has_unmute or (has_toggle and any(STATE["app_shields"][k].get("mic_hard_muted") for k in SOCIAL_MEDIA_APPS)):
+        if "all" in lower or "everywhere" in lower:
             targets = ALL_SHIELD_APPS
+        elif any(k in lower for k in STATE["app_shields"].keys()):
+            targets = [k for k in STATE["app_shields"].keys() if k in lower]
         else:
-            targets = [k for k in STATE["app_shields"].keys() if k in lower] or ["whatsapp"]
+            targets = SOCIAL_MEDIA_APPS  # Default target is all social media
+
+        for t in targets:
+            if t in STATE["app_shields"]:
+                app_obj = STATE["app_shields"][t]
+                app_obj["mic_muted"] = False
+                app_obj["mic_hard_muted"] = False
+                STATE["kernel_logs"].append(f"[AppOps] cmd appops set {app_obj['package']} RECORD_AUDIO allow -> Restored to Single-Session")
+        names = [STATE["app_shields"][t]["name"] for t in targets if t in STATE["app_shields"]]
+        return jsonify({
+            "success": True,
+            "message": f"🎙️ Microphone UNMUTED: Restored to automatic single-session for: {', '.join(names)}.",
+            "state": STATE
+        })
+
+    # 2. MUTE MIC
+    if has_mute or has_toggle or (any(w in lower for w in ["mic", "microphone"]) and any(w in lower for w in ["cut", "block", "kill", "stop", "disable", "off"])):
+        if "all" in lower or "everywhere" in lower:
+            targets = ALL_SHIELD_APPS
+        elif any(k in lower for k in STATE["app_shields"].keys()):
+            targets = [k for k in STATE["app_shields"].keys() if k in lower]
+        else:
+            targets = SOCIAL_MEDIA_APPS  # Default target is all social media
         
         for t in targets:
             if t in STATE["app_shields"]:
@@ -2666,28 +2699,7 @@ def process_command():
         names = [STATE["app_shields"][t]["name"] for t in targets if t in STATE["app_shields"]]
         return jsonify({
             "success": True,
-            "message": f"🎙️ Microphone PERMANENTLY MUTED for: {', '.join(names)}. Access is blocked even when opened in foreground.",
-            "state": STATE
-        })
-
-    # RESTORE MIC FOR APPS
-    if has_mic_word and any(w in lower for w in ["unmute", "allow", "restore", "turn on", "enable"]):
-        if "social" in lower:
-            targets = SOCIAL_MEDIA_APPS
-        elif "all" in lower or "everywhere" in lower:
-            targets = ALL_SHIELD_APPS
-        else:
-            targets = [k for k in STATE["app_shields"].keys() if k in lower] or ["whatsapp"]
-        for t in targets:
-            if t in STATE["app_shields"]:
-                app_obj = STATE["app_shields"][t]
-                app_obj["mic_muted"] = False
-                app_obj["mic_hard_muted"] = False
-                STATE["kernel_logs"].append(f"[AppOps] cmd appops set {app_obj['package']} RECORD_AUDIO allow -> Restored to Single-Session")
-        names = [STATE["app_shields"][t]["name"] for t in targets if t in STATE["app_shields"]]
-        return jsonify({
-            "success": True,
-            "message": f"🎙️ Microphone restored to automatic single-session for: {', '.join(names)}.",
+            "message": f"🎙️ Microphone MUTED: Access permanently blocked for: {', '.join(names)}.",
             "state": STATE
         })
 
