@@ -1691,6 +1691,10 @@ HTML_TEMPLATE = """
     let callInterval = null;
 
     function startCall(name, number) {
+      const cleanNum = (number || name || "").replace(/[^0-9]/g, "");
+      if (['911', '112', '999', '100', '108'].includes(cleanNum)) {
+        showToast('🚨 EMERGENCY CALL (' + cleanNum + '): Sensor killswitches bypassed · High-accuracy GNSS & AML active.');
+      }
       isCallActive = true;
       isCallRecording = false;
       callContactName = name || (currentDial || "Mom");
@@ -2217,6 +2221,36 @@ HTML_TEMPLATE = """
             </div>
           `;
         }
+      } else if (appKey === 'setup') {
+        body.innerHTML = `
+          <div style="display:flex; flex-direction:column; justify-content:space-between; width:100%; height:100%; padding:16px 8px; background:#000;">
+            <div style="text-align:center;">
+              <div style="font-size:1.6rem; font-weight:800; color:#fff; letter-spacing:2px; font-family:'JetBrains Mono', monospace; margin-top:16px;">ZERO·OS</div>
+              <div style="font-size:0.75rem; color:#8e8e93; margin-top:4px;">First-Boot Onboarding (OOBE)</div>
+            </div>
+
+            <div style="background:#121212; border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:16px;">
+              <div style="font-size:0.95rem; font-weight:700; color:#fff; margin-bottom:8px;">1. Zero Mandatory Accounts</div>
+              <div style="font-size:0.75rem; color:#8e8e93; line-height:1.5; margin-bottom:14px;">
+                You are never forced to create or sign into an account. Your phone belongs to you, not a corporation.
+              </div>
+
+              <div style="font-size:0.95rem; font-weight:700; color:#fff; margin-bottom:8px;">2. User-Intent Air-Gap</div>
+              <div style="font-size:0.75rem; color:#8e8e93; line-height:1.5;">
+                When you close an app, network sockets are dropped at the Linux kernel level. 4 to 7 days battery longevity.
+              </div>
+            </div>
+
+            <div>
+              <button style="width:100%; background:#fff; color:#000; border:none; padding:12px; border-radius:14px; font-size:0.85rem; font-weight:700; cursor:pointer;" onclick="launchForegroundApp('phone')">
+                Get Started with ZeroPhone ›
+              </button>
+              <button style="width:100%; background:none; border:none; color:#8e8e93; padding:10px; font-size:0.75rem; cursor:pointer; margin-top:4px;" onclick="closeAppWindow()">
+                Skip to Home Screen
+              </button>
+            </div>
+          </div>
+        `;
       } else if (appKey === 'messages') {
         // ==========================================
         // ZEROMESSAGES: 2FA AUTO-CLEANUP & THREADS
@@ -2719,6 +2753,12 @@ def process_command():
     data = request.get_json(silent=True) or {}
     raw_cmd = data.get("command", "").strip()
     lower = raw_cmd.lower()
+
+    # FIRST-BOOT SETUP WIZARD (OOBE)
+    if "setup" in lower or "oobe" in lower or "wizard" in lower:
+        STATE["active_app"] = "setup"
+        STATE["kernel_logs"].append("[OOBE] SetupWizardActivity invoked. First-boot onboarding active.")
+        return jsonify({"success": True, "message": "🚀 Launched ZeroOS First-Boot Setup Wizard.", "state": STATE})
 
     # WI-FI TOGGLE & COMMAND
     if "wifi" in lower or "wi-fi" in lower:
