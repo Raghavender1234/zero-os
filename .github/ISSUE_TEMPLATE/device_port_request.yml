@@ -1,0 +1,35 @@
+name: "📱 Device Port Request"
+description: "Request official ZeroOS testing or porting for your smartphone"
+labels: ["device-request"]
+body:
+  - type: input
+    id: device_name
+    attributes:
+      label: "Device Manufacturer & Model"
+      placeholder: "e.g., Xiaomi 13 Pro"
+    validations:
+      required: true
+  - type: input
+    id: chipset
+    attributes:
+      label: "SoC / Processor"
+      placeholder: "e.g., Qualcomm Snapdragon 8 Gen 2"
+    validations:
+      required: true
+  - type: input
+    id: launch_android_version
+    attributes:
+      label: "Shipped Android Version"
+      placeholder: "e.g., Android 13"
+    validations:
+      required: true
+  - type: dropdown
+    id: treble_status
+    attributes:
+      label: "Project Treble Status"
+      options:
+        - "Fully Treble Compliant (arm64_bvN / bgN)"
+        - "Seamless A/B Dynamic Partitions"
+        - "Not sure"
+    validations:
+      required: true

@@ -7,6 +7,8 @@ on:
       - 'aosp/**'
       - 'app/**'
       - '.github/workflows/build_aosp_gsi.yml'
+    tags:
+      - 'v*'
 
 jobs:
   validate-and-build:
@@ -61,3 +63,14 @@ jobs:
           name: ZeroOS-Production-Package
           path: release_bundle/*
           if-no-files-found: warn
+
+      - name: Create GitHub Release on Tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release_bundle/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
