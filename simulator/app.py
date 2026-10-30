@@ -1590,6 +1590,9 @@ HTML_TEMPLATE = """
     let state = {};
 
     async function loadState() {
+      if (window.location.search.includes('shade')) {
+        setTimeout(openNotificationShade, 250);
+      }
       const res = await fetch('/api/state');
       state = await res.json();
       renderIcons();
