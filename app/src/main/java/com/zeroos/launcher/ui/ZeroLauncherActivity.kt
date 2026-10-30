@@ -133,7 +133,7 @@ class ZeroLauncherActivity : ComponentActivity() {
                         isHotspotOn = isHotspotOn,
                         isGrayscaleOn = hardwareController.isGrayscaleActive(),
                         isAirGapActive = true,
-                        isNokiaModeOn = false,
+                        isDiaModeOn = false,
                         brightness = brightness,
                         volume = volume,
                         onBrightnessChange = { brightness = it },
@@ -167,8 +167,8 @@ class ZeroLauncherActivity : ComponentActivity() {
                         onToggleAirGap = {
                             showToast("🛡️ Auto Air-Gap policy is ACTIVE (Zero background data leakage)")
                         },
-                        onToggleNokiaMode = {
-                            showToast("🔋 Nokia 5.8-Day Ultra-Save mode toggled")
+                        onToggleDiaMode = {
+                            showToast("🔋 DIA Mode toggled (Deep-Idle Architecture · 5.8 Days)")
                         },
                         onCloseShade = { isNotificationShadeOpen = false }
                     )
@@ -231,7 +231,7 @@ class ZeroLauncherActivity : ComponentActivity() {
                     action = { hardwareController.rebootSystem("ZeroOS User Request") }
                 )
             }
-            is ZeroCommand.RequestNokiaMode -> {
+            is ZeroCommand.RequestDiaMode -> {
                 pendingAction = PendingConfirmation(
                     title = "Activate Nokia 4-Day Battery Mode?",
                     bullets = listOf(
@@ -494,7 +494,7 @@ fun MainLauncherScreen(
                         "🧊 /freeze tiktok" to "freeze tiktok",
                         "🔦 Flashlight" to "turn on flash",
                         "🌓 Grayscale" to "turn on grayscale",
-                        "🔋 /nokia-mode" to "nokia mode",
+                        "🔋 DIA Mode" to "dia mode",
                         "👁️ /spy-audit" to "who is spying?",
                         "📱 About Phone" to "about phone",
                         "🔄 Restart" to "restart"

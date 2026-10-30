@@ -10,7 +10,7 @@ sealed class ZeroCommand {
     data class ToggleHotspot(val explicitEnable: Boolean? = null) : ZeroCommand()
     data class RequestGrayscale(val explicitEnable: Boolean? = null) : ZeroCommand()
     data class RequestReboot(val immediate: Boolean = false) : ZeroCommand()
-    data class RequestNokiaMode(val explicitEnable: Boolean? = null) : ZeroCommand()
+    data class RequestDiaMode(val explicitEnable: Boolean? = null) : ZeroCommand()
     data class CutMobileData(val targetApps: List<String>) : ZeroCommand()
     data class RestoreMobileData(val targetApps: List<String>) : ZeroCommand()
     data class MuteMicrophone(val targetApps: List<String>) : ZeroCommand()
@@ -72,11 +72,11 @@ object CommandParser {
         }
 
         // 4. BATTERY: NOKIA MODE / DEEP SLEEP
-        if (lower.contains("nokia") || lower.contains("deep sleep") || lower == "/nokia-mode") {
+        if (lower.contains("dia") || lower.contains("nokia") || lower.contains("deep sleep") || lower == "/nokia-mode") {
             val explicit = if (lower.contains("off") || lower.contains("exit") || lower.contains("disable")) false
                            else if (lower.contains("on") || lower.contains("enable")) true
                            else null
-            return ZeroCommand.RequestNokiaMode(explicit)
+            return ZeroCommand.RequestDiaMode(explicit)
         }
 
         // 5. DISPLAY: MICRO-WINDOW / 0W SUB-DISPLAY

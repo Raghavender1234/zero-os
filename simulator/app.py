@@ -20,7 +20,7 @@ STATE = {
     "volume": 70,
     "is_grayscale": False,
     "is_micro_window": False,
-    "is_nokia_mode": False,
+    "is_dia_mode": False,
     "is_mic_killed": False,
     "auto_airgap_enabled": True,  # Automatic zero-leak background killer
     "active_app": None,           # Currently running foreground app (null = Home)
@@ -277,7 +277,7 @@ HTML_TEMPLATE = """
       transition: filter 0.3s ease;
     }
     .oled-screen.grayscale-active { filter: grayscale(100%); }
-    .oled-screen.nokia-active { filter: grayscale(100%) contrast(140%); }
+    .oled-screen.dia-active { filter: grayscale(100%) contrast(140%); }
 
     /* Punch-hole Camera */
     .camera-punch-hole {
@@ -699,7 +699,7 @@ HTML_TEMPLATE = """
       font-size: 0.73rem;
       color: #94a3b8;
     }
-    .nokia-mode-badge {
+    .dia-mode-badge {
       display: inline-block;
       margin-left: 6px;
       padding: 2px 7px;
@@ -1266,9 +1266,9 @@ HTML_TEMPLATE = """
                 <div class="squircle-lbl">Air-Gap</div>
               </div>
 
-              <div class="squircle-tile" id="tileNokia" onclick="toggleFeature('nokia')">
+              <div class="squircle-tile" id="tileDia" onclick="toggleFeature('dia')">
                 <div class="squircle-icon">🔋</div>
-                <div class="squircle-lbl">Ultra Save</div>
+                <div class="squircle-lbl">DIA Mode</div>
               </div>
 
             </div>
@@ -1350,7 +1350,7 @@ HTML_TEMPLATE = """
               <div class="clock-digits" id="widgetClock">11:28</div>
               <div class="battery-pill-glance">
                 <span id="widgetBatteryText">🔋 4.2 Days Battery Remaining</span>
-                <span id="widgetNokiaBadge" class="nokia-mode-badge" style="display:none;">NOKIA MODE</span>
+                <span id="widgetDiaBadge" class="dia-mode-badge" style="display:none;">DIA MODE</span>
               </div>
             </div>
 
@@ -1584,7 +1584,7 @@ HTML_TEMPLATE = """
 
           <div style="background:#131822; padding:10px 12px; border-radius:10px; border-left:3px solid #60a5fa;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-              <span style="font-size:0.8rem; font-weight:600; color:#60a5fa;">ZeroOS Nokia Mode (Deep Sleep)</span>
+              <span style="font-size:0.8rem; font-weight:600; color:#60a5fa;">ZeroOS DIA Mode (Deep Sleep)</span>
               <span style="font-size:0.8rem; font-weight:700; color:#60a5fa;">~0.09% / hour</span>
             </div>
             <div style="font-size:0.7rem; color:#cbd5e1; line-height:1.4;">
@@ -1607,7 +1607,7 @@ HTML_TEMPLATE = """
         <div class="side-box-title">💡 One UI Reachability + Pixel Material Layout</div>
         <div style="font-size:0.78rem; line-height:1.6; color:#cbd5e1;">
           <p>• <b>One UI Pull-Down:</b> Click the <b>Top Status Bar</b>. Notice how the top 25% provides comfortable viewing, while all interactive quick tiles and notifications sit in the thumb zone.</p>
-          <p style="margin-top:6px;">• <b>Pixel Dual Pills:</b> Hotspot and Nokia Mode are large hero pills at top of the grid. Torch, Grayscale, Digest, and Air-Gap are One UI squircles.</p>
+          <p style="margin-top:6px;">• <b>Pixel Dual Pills:</b> Hotspot and DIA Mode are large hero pills at top of the grid. Torch, Grayscale, Digest, and Air-Gap are One UI squircles.</p>
           <p style="margin-top:6px;">• <b>Bidirectional Toggles:</b> Every button turns ON on first click and OFF on second click.</p>
         </div>
       </div>
@@ -1777,20 +1777,20 @@ HTML_TEMPLATE = """
 
       const oled = document.getElementById('oledScreen');
       if (state.is_nokia_mode) {
-        oled.className = 'oled-screen nokia-active';
-        document.getElementById('widgetNokiaBadge').style.display = 'inline-block';
+        oled.className = 'oled-screen dia-active';
+        document.getElementById('widgetDiaBadge').style.display = 'inline-block';
         document.getElementById('widgetBatteryText').innerText = '🔋 5.8 Days (Nokia Deep Sleep)';
         document.getElementById('statDisplay').innerText = '60Hz E-Ink Profile';
         document.getElementById('statBattery').innerText = '5.8 Days';
       } else if (state.is_grayscale) {
         oled.className = 'oled-screen grayscale-active';
-        document.getElementById('widgetNokiaBadge').style.display = 'none';
+        document.getElementById('widgetDiaBadge').style.display = 'none';
         document.getElementById('widgetBatteryText').innerText = `🔋 ${state.battery_days_remaining} Days Battery Remaining`;
         document.getElementById('statDisplay').innerText = '120Hz Monochrome';
         document.getElementById('statBattery').innerText = `${state.battery_days_remaining} Days`;
       } else {
         oled.className = `oled-screen palette-${state.palette}`;
-        document.getElementById('widgetNokiaBadge').style.display = 'none';
+        document.getElementById('widgetDiaBadge').style.display = 'none';
         document.getElementById('widgetBatteryText').innerText = `🔋 ${state.battery_days_remaining} Days Battery Remaining`;
         document.getElementById('statDisplay').innerText = '120Hz Full OLED';
         document.getElementById('statBattery').innerText = `${state.battery_days_remaining} Days`;
@@ -1817,7 +1817,7 @@ HTML_TEMPLATE = """
       updateSquircle('tileHotspot', state.is_hotspot_on);
       updateSquircle('tileGrayscale', state.is_grayscale);
       updateSquircle('tileAirgap', state.auto_airgap_enabled);
-      updateSquircle('tileNokia', state.is_nokia_mode);
+      updateSquircle('tileDia', state.is_nokia_mode);
 
       // 4. Dual Sliders: Brightness & Volume
       if (state.brightness !== undefined) {
@@ -1984,7 +1984,7 @@ HTML_TEMPLATE = """
               <div class="settings-icon" style="background:#10b981; color:#000;">🔋</div>
               <div class="settings-content">
                 <div class="settings-title">Battery & Longevity</div>
-                <div class="settings-sub">${state.battery_days_remaining} Days Remaining · Nokia Mode: <b>${state.is_nokia_mode ? 'ON (60Hz)' : 'OFF (120Hz)'}</b></div>
+                <div class="settings-sub">${state.battery_days_remaining} Days Remaining · DIA Mode: <b>${state.is_nokia_mode ? 'ON (60Hz)' : 'OFF (120Hz)'}</b></div>
               </div>
             </div>
 
@@ -2552,12 +2552,12 @@ def toggle_feature():
         STATE["kernel_logs"].append(f"[GPIO] Flashlight toggled {act}")
         msg = f"🔦 Flashlight turned {act}."
 
-    elif feat == "nokia":
-        STATE["is_nokia_mode"] = not STATE["is_nokia_mode"]
-        STATE["battery_days_remaining"] = 5.8 if STATE["is_nokia_mode"] else 4.2
-        act = "ON" if STATE["is_nokia_mode"] else "OFF"
-        STATE["kernel_logs"].append(f"[PowerHAL] Nokia 4-Day Mode toggled {act} (60Hz / 1-bit monochrome)")
-        msg = f"🔋 Nokia Mode turned {act}."
+    elif feat == "dia" or feat == "nokia":
+        STATE["is_dia_mode"] = not STATE["is_dia_mode"]
+        STATE["battery_days_remaining"] = 5.8 if STATE["is_dia_mode"] else 4.2
+        act = "ON" if STATE["is_dia_mode"] else "OFF"
+        STATE["kernel_logs"].append(f"[PowerHAL] DIA Mode toggled {act} (60Hz / 1-bit monochrome)")
+        msg = f"🔋 DIA Mode turned {act}."
 
     elif feat == "grayscale":
         STATE["is_grayscale"] = not STATE["is_grayscale"]
@@ -2827,24 +2827,24 @@ def process_command():
             msg = "(((•))) Hotspot turned OFF."
         return jsonify({"success": True, "message": msg, "state": STATE})
 
-    # NOKIA 4-6 DAY BATTERY MODE (BIDIRECTIONAL TOGGLE)
-    if "nokia" in lower:
+    # DIA MODE (DEEP-IDLE ARCHITECTURE - 5-7 DAY BATTERY)
+    if "dia" in lower or "nokia" in lower:
         if "off" in lower or "exit" in lower or "disable" in lower:
-            STATE["is_nokia_mode"] = False
+            STATE["is_dia_mode"] = False
             STATE["battery_days_remaining"] = 4.2
             STATE["kernel_logs"].append("[CPUFREQ] Restored normal governor. 120Hz display online.")
-            msg = "Nokia Mode deactivated. Full color & 120Hz restored."
+            msg = "DIA Mode deactivated. Full color & 120Hz restored."
         elif "on" in lower or "enable" in lower:
-            STATE["is_nokia_mode"] = True
+            STATE["is_dia_mode"] = True
             STATE["battery_days_remaining"] = 5.8
             STATE["kernel_logs"].append("[CPUFREQ] Scaled governor to powersave. Deep Linux C-states forced.")
-            msg = "🔋 Nokia 5-Day Mode turned ON. Display clamped to 60Hz 1-bit monochrome."
+            msg = "🔋 DIA Mode turned ON. Display clamped to 60Hz 1-bit monochrome."
         else:
-            STATE["is_nokia_mode"] = not STATE["is_nokia_mode"]
-            STATE["battery_days_remaining"] = 5.8 if STATE["is_nokia_mode"] else 4.2
-            act = "ON" if STATE["is_nokia_mode"] else "OFF"
-            STATE["kernel_logs"].append(f"[PowerHAL] Nokia Mode toggled {act}.")
-            msg = f"🔋 Nokia Mode turned {act}."
+            STATE["is_dia_mode"] = not STATE["is_dia_mode"]
+            STATE["battery_days_remaining"] = 5.8 if STATE["is_dia_mode"] else 4.2
+            act = "ON" if STATE["is_dia_mode"] else "OFF"
+            STATE["kernel_logs"].append(f"[PowerHAL] DIA Mode toggled {act}.")
+            msg = f"🔋 DIA Mode turned {act}."
         return jsonify({"success": True, "message": msg, "state": STATE})
 
     # GRAYSCALE (BIDIRECTIONAL TOGGLE)

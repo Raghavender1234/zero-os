@@ -42,7 +42,7 @@ fun NotificationShadeOverlay(
     isHotspotOn: Boolean,
     isGrayscaleOn: Boolean,
     isAirGapActive: Boolean,
-    isNokiaModeOn: Boolean,
+    isDiaModeOn: Boolean,
     brightness: Float,
     volume: Float,
     onBrightnessChange: (Float) -> Unit,
@@ -54,7 +54,7 @@ fun NotificationShadeOverlay(
     onToggleHotspot: () -> Unit,
     onToggleGrayscale: () -> Unit,
     onToggleAirGap: () -> Unit,
-    onToggleNokiaMode: () -> Unit,
+    onToggleDiaMode: () -> Unit,
     onCloseShade: () -> Unit
 ) {
     AnimatedVisibility(
@@ -243,9 +243,9 @@ fun NotificationShadeOverlay(
                     SquircleTile(
                         modifier = Modifier.weight(1f),
                         icon = "🔋",
-                        label = "Ultra Save",
+                        label = "DIA Mode",
                         isActive = isNokiaModeOn,
-                        onClick = onToggleNokiaMode
+                        onClick = onToggleDiaMode
                     )
                 }
 

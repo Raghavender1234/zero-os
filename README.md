@@ -47,13 +47,13 @@ Modeled after desktop browsers ("Allow this time only"):
 * **Natural Language Hard-Mutes:** Commands like `mute mic for all social media` or `cut data for tiktok` lock hardware registers to dead silence permanently, even when those apps are opened in the foreground!
 
 ### 4. 🎨 One UI Reachability + Pixel Material You Shell
-* **Clean Home Screen (`#000000`):** Zero permanent clutter. No permanent Hotspot or Nokia Mode buttons taking up space. Official borderless vector logos float on pure black (cutting home screen power draw by 70%).
+* **Clean Home Screen (`#000000`):** Zero permanent clutter. No permanent Hotspot or DIA Mode buttons taking up space. Official borderless vector logos float on pure black (cutting home screen power draw by 70%).
 * **Pull-Down Quick Settings:**
   * **Top 25% Viewing Area:** Large readable clock, date, and battery percentage within comfortable reach.
-  * **Bottom 75% Thumb Interaction Area:** Hero dual pills for high-impact modes (**Wi-Fi Hotspot** & **Nokia Mode**), followed by One UI squircles (**Torch**, **Grayscale**, **Calm Digest**, **Air-Gap**, **Mic Kill**, **0W Micro-Window**).
+  * **Bottom 75% Thumb Interaction Area:** Hero dual pills for high-impact modes (**Wi-Fi Hotspot** & **DIA Mode**), followed by One UI squircles (**Torch**, **Grayscale**, **Calm Digest**, **Air-Gap**, **Mic Kill**, **0W Micro-Window**).
   * **True Bidirectional Toggles:** Tap once to turn ON; tap again to turn OFF. Tap outside or on the bottom drag pill to dismiss naturally.
 
-### 5. 🔋 Nokia 5-Day Mode (`NokiaModeController.kt`)
+### 5. 🔋 DIA Mode (Deep-Idle Architecture) (`NokiaModeController.kt`)
 * Clamps the OLED screen to **60Hz 1-bit monochrome daltonizer**.
 * Downshifts CPU governor to Linux powersave C-states.
 * Disables high-frequency 5G NR radios, maintaining 4G/VoLTE paging for calls and SMS.
@@ -72,7 +72,7 @@ Empirical hardware power draw measured on a standard **5,000 mAh (19.2 Wh @ 3.85
 
 ```
 ┌──────────────────────────────┬────────────────────────┬─────────────────────────┬────────────────────────┐
-│ Standby Metric               │ Stock Normal Android   │ ZeroOS Auto-AirGap      │ ZeroOS Nokia Mode      │
+│ Standby Metric               │ Stock Normal Android   │ ZeroOS Auto-AirGap      │ ZeroOS DIA Mode      │
 ├──────────────────────────────┼────────────────────────┼─────────────────────────┼────────────────────────┤
 │ Average Current Draw         │ 99.5 mA (383.1 mW)     │ 11.1 mA (42.7 mW)       │ 4.8 mA (18.5 mW)       │
 │ Power Reduction vs Stock     │ Baseline (0%)          │ 🔻 88.8% Less Power     │ 🔻 95.2% Less Power    │
@@ -107,7 +107,7 @@ python simulator/app.py
 ```
 
 Open **`http://127.0.0.1:5077`** in your browser.
-* **Test the Pull-Down Notification Shade:** Click the top status bar. Tap the Hotspot or Nokia Mode hero pills to test bidirectional toggling.
+* **Test the Pull-Down Notification Shade:** Click the top status bar. Tap the Hotspot or DIA Mode hero pills to test bidirectional toggling.
 * **Test Intentional Media Sessions:** Tap Spotify, click **Play**, and swipe Home. Notice that Spotify continues streaming music while telemetry trackers remain severed!
 * **Test Active Trip Navigation:** Tap Maps, click **Start Route**, and swipe Home. Navigation guidance continues in the background!
 * **Test Silent Permission Revocation:** Open WhatsApp, then close it. Watch the live Linux Kernel log terminal confirm that AppOps revoked mic and location registers automatically.
