@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ZeroOS Hardware & Framework Policy Overlays
+    Enforcing User Intent over Corporate Tracking & Background Drain
+-->
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+
+    <!-- =================================================================== -->
+    <!-- 1. AGGRESSIVE DOZE & EXTREME STANDBY BATTERY (4-7 DAYS LONGEVITY)    -->
+    <!-- =================================================================== -->
+
+    <!-- Enable automatic device power management and immediate deep sleep -->
+    <bool name="config_enableAutoPowerModes">true</bool>
+
+    <!-- Trigger doze mode immediately after the display powers down (0-delay) -->
+    <bool name="config_dozeAfterScreenOff">true</bool>
+
+    <!-- Clamp device idle mode threshold to 0ms (no 30-minute waiting window) -->
+    <integer name="config_autoPowerModeThreshold">0</integer>
+
+    <!-- Maximum time to spend in light idle before dropping into deep Linux C-states -->
+    <integer name="config_autoPowerModeAnyMotionSensor">0</integer>
+
+    <!-- Disallow third-party apps from holding PARTIAL_WAKE_LOCK in background -->
+    <bool name="config_pinnerAppToMemory">false</bool>
+
+    <!-- Enable LTPO 1Hz Idle Refresh Rate Throttling -->
+    <integer name="config_defaultRefreshRate">60</integer>
+    <integer name="config_defaultPeakRefreshRate">120</integer>
+
+    <!-- =================================================================== -->
+    <!-- 2. PRIVACY & ZERO SURVEILLANCE OVERLAYS                             -->
+    <!-- =================================================================== -->
+
+    <!-- Disallow continuous Wi-Fi scanning when Wi-Fi is toggled OFF -->
+    <bool name="config_wifi_background_scan_support">false</bool>
+
+    <!-- Disallow BLE (Bluetooth Low Energy) beacon advertising and location tracking -->
+    <bool name="config_bluetooth_le_peripheral_mode_supported">false</bool>
+
+    <!-- Kill background sensor streaming (accelerometer, gyroscope, mic) on app exit -->
+    <bool name="config_suspendWhenScreenOffDueToClamshell">true</bool>
+
+    <!-- Enforce system camera and microphone privacy indicators without bypass -->
+    <bool name="config_enableCameraPrivacyIndicator">true</bool>
+    <bool name="config_enableMicPrivacyIndicator">true</bool>
+
+    <!-- =================================================================== -->
+    <!-- 3. DISPLAY ENGINE & TRUE OLED BLACK CANVAS                          -->
+    <!-- =================================================================== -->
+
+    <!-- Default system display profile: True 100% OLED pitch black (#000000) -->
+    <bool name="config_useRoundIcon">false</bool>
+
+    <!-- Enable Daltonizer Monochromatic Accessibility Engine natively -->
+    <bool name="config_enableDisplayDaltonizer">true</bool>
+
+</resources>

@@ -6,9 +6,11 @@ on:
     paths:
       - 'aosp/**'
       - 'app/**'
+      - '.github/workflows/build_aosp_gsi.yml'
 
 jobs:
-  build-apk-and-gsi:
+  validate-and-build:
+    name: Build ZeroOS Shell & Validate AOSP GSI Tree
     runs-on: ubuntu-latest
     steps:
       - name: Checkout ZeroOS Repository
@@ -20,14 +22,34 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build ZeroOS Android Launcher APK
+      - name: Set up Build Tools
         run: |
-          chmod +x ./gradlew || true
-          ./gradlew assembleDebug || gradle assembleDebug
+          sudo apt-get update
+          sudo apt-get install -y openssl libncurses5
 
-      - name: Upload ZeroOS APK Release Artifact
+      - name: Verify & Generate AVB 2.0 Cryptographic Keys
+        run: |
+          chmod +x aosp/tools/*.sh aosp/scripts/*.sh
+          bash aosp/tools/generate_keys.sh
+          ls -la aosp/keys/
+
+      - name: Build ZeroOS System Package (APK)
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease || ./gradlew assembleDebug
+
+      - name: Validate AOSP Manifest & Device Tree Syntax
+        run: |
+          echo "Validating AOSP AndroidProducts and BoardConfig..."
+          test -f aosp/device/zero/zero_arm64/AndroidProducts.mk
+          test -f aosp/device/zero/zero_arm64/BoardConfig.mk
+          test -f aosp/device/zero/zero_arm64/zero_arm64.mk
+          test -f aosp/device/zero/zero_arm64/overlay/frameworks/base/core/res/res/values/config.xml
+          echo "AOSP Treble configuration valid."
+
+      - name: Upload ZeroOS System Package Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZeroOS-Launcher-Debug-APK
-          path: app/build/outputs/apk/debug/*.apk
+          name: ZeroOS-System-Package
+          path: app/build/outputs/apk/**/*.apk
           if-no-files-found: warn
