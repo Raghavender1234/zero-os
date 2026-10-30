@@ -8,6 +8,8 @@
 [![AOSP Version](https://img.shields.io/badge/AOSP-Android%2014-green.svg)](https://source.android.com/)
 [![Kernel](https://img.shields.io/badge/Kernel-Linux%205.10%2B-orange.svg)](https://kernel.org)
 [![Standby Power](https://img.shields.io/badge/Standby%20Power-11.1%20mA%20(-88%25)-brightgreen.svg)](#-empirical-battery-benchmarks)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-blueviolet.svg)](https://raghavender1234.github.io/zero-os/)
+[![Hardware Verification](https://img.shields.io/badge/Verification-TESTING.md-success.svg)](TESTING.md)
 
 ---
 
@@ -206,6 +208,34 @@ zero-os/
 ```
 
 ---
+
+
+---
+
+## ⚡ 1-Click Installation & Flashing Guide
+
+ZeroOS includes cross-platform 1-click flasher scripts that automate the entire Project Treble GSI flashing process across Google Pixel, OnePlus, Xiaomi, Motorola, Nothing Phone, and all Treble-compliant devices.
+
+### On Windows
+Connect your unlocked device via USB with ADB debugging enabled, then double-click or run:
+```cmd
+flash_phone.bat
+```
+
+### On Linux / macOS
+```bash
+chmod +x flash_phone.sh
+./flash_phone.sh
+```
+
+The script automatically:
+1. Detects connected Fastboot devices.
+2. Checks AVB 2.0 release-key cryptographic signatures.
+3. Disables AVB verification verification-checks safely via `--disable-verity --disable-verification flash vbmeta vbmeta.img`.
+4. Flashes `system.img` to the active dynamic partition slot (`system_a` / `system_b`).
+5. Reboots directly into the ZeroOS First-Boot Setup Wizard in under 20 seconds.
+
+For full step-by-step verification and diagnostic commands, see [TESTING.md](TESTING.md).
 
 ### Dual-Booting Safely via DSU (Dynamic System Updates)
 
