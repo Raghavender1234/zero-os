@@ -180,6 +180,25 @@ HTML_TEMPLATE = """
       flex-wrap: wrap;
     }
 
+    
+    /* DIALER TABS */
+    .dialer-tab {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 0.78rem;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .dialer-tab.active {
+      background: #171717;
+      color: #fff;
+      font-weight: 700;
+    }
+
     /* REALISTIC ANDROID HARDWARE CHASSIS */
     .phone-container {
       position: relative;
@@ -1631,6 +1650,17 @@ HTML_TEMPLATE = """
     }
 
     let currentDial = "";
+    
+    function switchDialerTab(tab) {
+      document.getElementById('dialerViewRecents').style.display = tab === 'recents' ? 'flex' : 'none';
+      document.getElementById('dialerViewContacts').style.display = tab === 'contacts' ? 'flex' : 'none';
+      document.getElementById('dialerViewKeypad').style.display = tab === 'keypad' ? 'flex' : 'none';
+
+      document.getElementById('dialerTabRecents').className = tab === 'recents' ? 'dialer-tab active' : 'dialer-tab';
+      document.getElementById('dialerTabContacts').className = tab === 'contacts' ? 'dialer-tab active' : 'dialer-tab';
+      document.getElementById('dialerTabKeypad').className = tab === 'keypad' ? 'dialer-tab active' : 'dialer-tab';
+    }
+
     function appendDial(digit) {
       currentDial += digit;
       const el = document.getElementById('dialDisplay');
@@ -1919,15 +1949,107 @@ HTML_TEMPLATE = """
         `;
       } else if (appKey === 'phone') {
         body.innerHTML = `
-          <div style="display:flex; flex-direction:column; align-items:center; width:100%; height:100%; justify-content:center;">
-            <div style="font-size:1.35rem; font-weight:300; color:#fff; margin-bottom:14px; letter-spacing:1px; min-height:28px;" id="dialDisplay">Enter Number</div>
-            <div class="dialpad-grid">
-              ${[1,2,3,4,5,6,7,8,9,'*',0,'#'].map(n => `<div class="dial-key" onclick="appendDial('${n}')">${n}</div>`).join('')}
+          <div style="display:flex; flex-direction:column; width:100%; height:100%; overflow:hidden;">
+            
+            <!-- Standard Android Dialer Tabs -->
+            <div style="display:flex; justify-content:space-around; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px; margin-bottom:8px;">
+              <button id="dialerTabRecents" class="dialer-tab active" onclick="switchDialerTab('recents')">🕒 Recents</button>
+              <button id="dialerTabContacts" class="dialer-tab" onclick="switchDialerTab('contacts')">👥 Contacts</button>
+              <button id="dialerTabKeypad" class="dialer-tab" onclick="switchDialerTab('keypad')">🔢 Keypad</button>
             </div>
-            <div style="margin-top:14px; display:flex; gap:14px; align-items:center;">
-              <button class="call-btn-green" onclick="showToast('📞 Dialing encrypted voice...')">📞 Call</button>
-              <button class="call-btn-del" onclick="clearDial()">⌫</button>
+
+            <!-- 1. RECENTS CALL HISTORY TAB -->
+            <div id="dialerViewRecents" style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1; padding-right:2px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px; height:36px; border-radius:50%; background:#2563eb; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">M</div>
+                  <div>
+                    <div style="font-size:0.85rem; font-weight:600; color:#fff;">Mom</div>
+                    <div style="font-size:0.7rem; color:#94a3b8;">↙ Incoming · Mobile · 14m ago</div>
+                  </div>
+                </div>
+                <button style="background:none; border:none; color:#30d158; font-size:1.1rem; cursor:pointer;" onclick="showToast('📞 Calling Mom...')">📞</button>
+              </div>
+
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px; height:36px; border-radius:50%; background:#ea580c; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">S</div>
+                  <div>
+                    <div style="font-size:0.85rem; font-weight:600; color:#ff453a;">Sarah Jenkins (Missed)</div>
+                    <div style="font-size:0.7rem; color:#94a3b8;">↙ Missed · Mobile · 2h ago</div>
+                  </div>
+                </div>
+                <button style="background:none; border:none; color:#30d158; font-size:1.1rem; cursor:pointer;" onclick="showToast('📞 Calling Sarah...')">📞</button>
+              </div>
+
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px; height:36px; border-radius:50%; background:#059669; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">A</div>
+                  <div>
+                    <div style="font-size:0.85rem; font-weight:600; color:#fff;">Alex Rivera</div>
+                    <div style="font-size:0.7rem; color:#94a3b8;">↗ Outgoing · 4m 12s · Yesterday</div>
+                  </div>
+                </div>
+                <button style="background:none; border:none; color:#30d158; font-size:1.1rem; cursor:pointer;" onclick="showToast('📞 Calling Alex...')">📞</button>
+              </div>
+
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px; height:36px; border-radius:50%; background:#64748b; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">+44</div>
+                  <div>
+                    <div style="font-size:0.85rem; font-weight:600; color:#fff;">+44 7911 123456</div>
+                    <div style="font-size:0.7rem; color:#94a3b8;">↙ Incoming · 1m 05s · 2 days ago</div>
+                  </div>
+                </div>
+                <button style="background:none; border:none; color:#30d158; font-size:1.1rem; cursor:pointer;" onclick="showToast('📞 Calling +44 7911 123456...')">📞</button>
+              </div>
             </div>
+
+            <!-- 2. CONTACTS TAB -->
+            <div id="dialerViewContacts" style="display:none; flex-direction:column; gap:8px; overflow-y:auto; flex:1; padding-right:2px;">
+              <input type="text" placeholder="🔍 Search 182 contacts..." style="background:#171717; border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:8px 12px; color:#fff; font-size:0.8rem; margin-bottom:4px;" />
+              
+              <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:4px;">A</div>
+              <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between;">
+                <span>Alex Rivera</span>
+                <span style="color:#64748b; font-size:0.72rem;">Mobile</span>
+              </div>
+              <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between;">
+                <span>Aunt Clara</span>
+                <span style="color:#64748b; font-size:0.72rem;">Home</span>
+              </div>
+
+              <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:8px;">D</div>
+              <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between;">
+                <span>Dr. Michael Patel</span>
+                <span style="color:#64748b; font-size:0.72rem;">Work</span>
+              </div>
+
+              <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:8px;">M</div>
+              <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between;">
+                <span>Mom</span>
+                <span style="color:#64748b; font-size:0.72rem;">Favorite</span>
+              </div>
+
+              <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:8px;">S</div>
+              <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between;">
+                <span>Sarah Jenkins</span>
+                <span style="color:#64748b; font-size:0.72rem;">Mobile</span>
+              </div>
+            </div>
+
+            <!-- 3. KEYPAD TAB -->
+            <div id="dialerViewKeypad" style="display:none; flex-direction:column; align-items:center; justify-content:center; flex:1;">
+              <div style="font-size:1.35rem; font-weight:300; color:#fff; margin-bottom:10px; letter-spacing:1px; min-height:28px;" id="dialDisplay">Enter Number</div>
+              <div class="dialpad-grid">
+                ${[1,2,3,4,5,6,7,8,9,'*',0,'#'].map(n => `<div class="dial-key" onclick="appendDial('${n}')">${n}</div>`).join('')}
+              </div>
+              <div style="margin-top:10px; display:flex; gap:14px; align-items:center;">
+                <button class="call-btn-green" onclick="showToast('📞 Dialing encrypted voice...')">📞 Call</button>
+                <button class="call-btn-del" onclick="clearDial()">⌫</button>
+              </div>
+            </div>
+
           </div>
         `;
       } else if (appKey === 'camera') {
