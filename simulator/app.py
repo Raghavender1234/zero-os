@@ -12,6 +12,12 @@ STATE = {
     "hotspot_ssid": "ZeroPhone-5G",
     "hotspot_pass": "zero-os-pass",
     "hotspot_clients": 1,
+    "is_wifi_on": True,
+    "wifi_ssid": "Home-5G",
+    "is_bluetooth_on": True,
+    "bluetooth_device": "Sony WH-1000XM5",
+    "sound_mode": "sound", # "sound", "vibrate", "silent"
+    "volume": 70,
     "is_grayscale": False,
     "is_micro_window": False,
     "is_nokia_mode": False,
@@ -69,6 +75,22 @@ STATE = {
             "is_frozen": False,
             "trackers_blocked": 31
         },
+        "amazon_music": {
+            "name": "Amazon Music",
+            "package": "com.amazon.mp3",
+            "data_cut": False,
+            "mic_muted": False,
+            "is_frozen": False,
+            "trackers_blocked": 0
+        },
+        "waze": {
+            "name": "Waze",
+            "package": "com.waze",
+            "data_cut": False,
+            "mic_muted": False,
+            "is_frozen": False,
+            "trackers_blocked": 0
+        },
         "monzo": {
             "name": "Monzo",
             "package": "co.uk.getmondo",
@@ -100,17 +122,21 @@ HTML_TEMPLATE = """
   <style>
     :root {
       --android-bg: #000000;
-      --oneui-surface: #121721;
-      --oneui-card: #18202d;
-      --oneui-tile: #202b3d;
-      --pixel-primary: #a8c7fa;
-      --pixel-accent: #669df6;
-      --text-main: #f1f5f9;
-      --text-sub: #94a3b8;
-      --text-muted: #64748b;
-      --accent-green: #34d399;
-      --accent-red: #ef4444;
-      --accent-amber: #f59e0b;
+      --oneui-surface: #0a0a0a;
+      --oneui-card: #121212;
+      --oneui-tile: #171717;
+      --tile-active: #ffffff;
+      --tile-active-text: #000000;
+      --pixel-primary: #ffffff;
+      --pixel-accent: #e2e8f0;
+      --text-main: #f8fafc;
+      --text-sub: #8e8e93;
+      --text-muted: #636366;
+      --accent-green: #30d158;
+      --accent-red: #ff453a;
+      --accent-amber: #ffd60a;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(255, 255, 255, 0.28);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -318,6 +344,91 @@ HTML_TEMPLATE = """
       cursor: pointer;
     }
     .oneui-icon-btn:hover { background: #222c3e; color: #fff; }
+
+    
+    /* DUAL SLIDERS: BRIGHTNESS & VOLUME */
+    .dual-sliders-card {
+      background: var(--oneui-card);
+      border-radius: 20px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border-subtle);
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .slider-icon { font-size: 0.95rem; color: #94a3b8; width: 20px; text-align: center; }
+    .slider-val { font-size: 0.72rem; color: #94a3b8; font-family: 'JetBrains Mono', monospace; width: 34px; text-align: right; }
+    .material-slider {
+      flex: 1;
+      accent-color: var(--pixel-primary);
+      cursor: pointer;
+      height: 6px;
+    }
+
+    /* HERO TILES GRID (2x2) */
+    .hero-tiles-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    /* COMMAND CENTER & QUICK CHIPS */
+    .command-center-container {
+      margin: 10px 0 16px 0;
+      width: 100%;
+    }
+    .quick-chips-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scrollbar-width: none;
+    }
+    .quick-chips-row::-webkit-scrollbar { display: none; }
+    .quick-chip {
+      background: var(--oneui-card);
+      border: 1px solid var(--border-subtle);
+      color: #cbd5e1;
+      border-radius: 20px;
+      padding: 6px 12px;
+      font-size: 0.72rem;
+      white-space: nowrap;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }
+    .quick-chip:hover {
+      background: var(--oneui-tile);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .quick-chip:active {
+      transform: scale(0.95);
+    }
+    .command-symbol {
+      font-size: 1.1rem;
+      color: var(--accent-green);
+      font-weight: bold;
+      padding-left: 12px;
+    }
+    .btn-execute-cmd {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.1rem;
+      padding: 0 14px;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .btn-execute-cmd:hover {
+      color: #fff;
+    }
 
     /* MATERIAL 3 BRIGHTNESS PILL SLIDER */
     .oneui-brightness-card {
@@ -1036,76 +1147,82 @@ HTML_TEMPLATE = """
               </div>
             </div>
 
-            <!-- Material 3 Smooth Brightness Pill Slider -->
-            <div class="oneui-brightness-card">
-              <span class="slider-sun">☀️</span>
-              <input type="range" class="material-slider" min="10" max="100" value="85" oninput="showToast('Display brightness: ' + this.value + '%')" />
+            <!-- Dual Sliders: Brightness & Volume -->
+            <div class="dual-sliders-card">
+              <div class="slider-row">
+                <span class="slider-icon">☀️</span>
+                <input type="range" id="sliderBrightness" class="material-slider" min="10" max="100" value="85" oninput="setBrightness(this.value)" />
+                <span class="slider-val" id="valBrightness">85%</span>
+              </div>
+              <div class="slider-row" style="margin-top: 8px;">
+                <span class="slider-icon">🔊</span>
+                <input type="range" id="sliderVolume" class="material-slider" min="0" max="100" value="70" oninput="setVolume(this.value)" />
+                <span class="slider-val" id="valVolume">70%</span>
+              </div>
             </div>
 
-            <!-- Pixel-Style Hero Dual Pills (Top Priority Hardware Controls) -->
-            <div class="hero-tiles-row">
+            <!-- Top Everyday Hero Quick Tiles (4 Capsules) -->
+            <div class="hero-tiles-grid">
               
-              <!-- Hotspot Pill -->
-              <div class="hero-pill" id="tileHotspot" onclick="toggleFeature('hotspot')">
-                <div class="hero-icon-bubble">(((•)))</div>
+              <!-- Wi-Fi Tile -->
+              <div class="hero-pill active" id="tileWifi" onclick="toggleFeature('wifi')">
+                <div class="hero-icon-bubble">📶</div>
                 <div class="hero-info">
-                  <div class="hero-title">Hotspot</div>
-                  <div class="hero-sub" id="subHotspot">Off</div>
+                  <div class="hero-title">Wi-Fi</div>
+                  <div class="hero-sub" id="subWifi">Home-5G</div>
                 </div>
               </div>
 
-              <!-- Nokia Mode Pill -->
-              <div class="hero-pill" id="tileNokia" onclick="toggleFeature('nokia')">
-                <div class="hero-icon-bubble">🔋</div>
+              <!-- Bluetooth Tile -->
+              <div class="hero-pill active" id="tileBt" onclick="toggleFeature('bluetooth')">
+                <div class="hero-icon-bubble">ᛒ</div>
                 <div class="hero-info">
-                  <div class="hero-title">Nokia Mode</div>
-                  <div class="hero-sub" id="subNokia">Off</div>
+                  <div class="hero-title">Bluetooth</div>
+                  <div class="hero-sub" id="subBt">WH-1000XM5</div>
+                </div>
+              </div>
+
+              <!-- Sound Mode Tile -->
+              <div class="hero-pill active" id="tileSound" onclick="toggleFeature('sound')">
+                <div class="hero-icon-bubble" id="iconSound">🔔</div>
+                <div class="hero-info">
+                  <div class="hero-title">Sound</div>
+                  <div class="hero-sub" id="subSound">Ring</div>
+                </div>
+              </div>
+
+              <!-- Flashlight / Torch Tile -->
+              <div class="hero-pill" id="tileTorch" onclick="toggleFeature('torch')">
+                <div class="hero-icon-bubble">🔦</div>
+                <div class="hero-info">
+                  <div class="hero-title">Torch</div>
+                  <div class="hero-sub" id="subTorch">Off</div>
                 </div>
               </div>
 
             </div>
 
-            <!-- One UI Squircles Grid (6 Hardware & Privacy Toggles) -->
+            <!-- Secondary System & Privacy Squircles (4 Tiles) -->
             <div class="squircles-grid">
               
-              <div class="squircle-tile" id="tileTorch" onclick="toggleFeature('torch')">
-                <div class="squircle-icon">🔦</div>
-                <div class="squircle-lbl">Torch</div>
+              <div class="squircle-tile" id="tileHotspot" onclick="toggleFeature('hotspot')">
+                <div class="squircle-icon">(((•)))</div>
+                <div class="squircle-lbl">Hotspot</div>
               </div>
 
               <div class="squircle-tile" id="tileGrayscale" onclick="toggleFeature('grayscale')">
                 <div class="squircle-icon">🌓</div>
-                <div class="squircle-lbl">Grayscale</div>
+                <div class="squircle-lbl">0W Mono</div>
               </div>
 
-              <div class="squircle-tile" id="tileDigest" onclick="toggleFeature('digest')">
-                <div class="squircle-icon">🔕</div>
-                <div class="squircle-lbl">Digest</div>
-              </div>
-
-              <div class="squircle-tile" id="tileAirgap" onclick="toggleFeature('airgap')">
+              <div class="squircle-tile active" id="tileAirgap" onclick="toggleFeature('airgap')">
                 <div class="squircle-icon">🛡️</div>
                 <div class="squircle-lbl">Air-Gap</div>
               </div>
 
-              <div class="squircle-tile" id="tileMic" onclick="toggleFeature('mic')">
-                <div class="squircle-icon">🎙️</div>
-                <div class="squircle-lbl">Mic Lock</div>
-              </div>
-
-              <div class="squircle-tile" id="tileMicro" onclick="toggleFeature('micro')">
-                <div class="squircle-icon">📱</div>
-                <div class="squircle-lbl">0W Screen</div>
-              </div>
-
-              <div class="squircle-tile" onclick="quickRun('theme amber')">
-                <div class="squircle-icon">🟡</div>
-                <div class="squircle-lbl">Amber</div>
-              </div>
-
-              <div class="squircle-tile" onclick="quickRun('reboot')">
-                <div class="squircle-icon">🔄</div>
-                <div class="squircle-lbl">Restart</div>
+              <div class="squircle-tile" id="tileNokia" onclick="toggleFeature('nokia')">
+                <div class="squircle-icon">🔋</div>
+                <div class="squircle-lbl">Ultra Save</div>
               </div>
 
             </div>
@@ -1200,37 +1317,22 @@ HTML_TEMPLATE = """
               <span style="font-size:0.75rem; color:#64748b;">Pull down shade ›</span>
             </div>
 
-            <!-- Zero Impact Security Metrics Card -->
-            <div class="impact-metrics-card">
-              <div class="impact-card-header">
-                <span class="impact-card-title">🛡️ Zero-Leak Impact Today</span>
-                <span class="impact-badge-safe">AIR-GAP ACTIVE</span>
+            <!-- Floating Ergonomic ZeroOS Command Center -->
+            <div class="command-center-container">
+              <div class="quick-chips-row">
+                <button class="quick-chip" onclick="quickRun('toggle wifi')">📶 Wi-Fi</button>
+                <button class="quick-chip" onclick="quickRun('toggle bluetooth')">ᛒ Bluetooth</button>
+                <button class="quick-chip" onclick="quickRun('cycle sound')">🔔 Sound</button>
+                <button class="quick-chip" onclick="quickRun('torch')">🔦 Torch</button>
+                <button class="quick-chip" onclick="quickRun('mute mic for social media')">🎙️ Mute Mic</button>
+                <button class="quick-chip" onclick="quickRun('battery report')">🔋 Battery</button>
               </div>
-              <div class="impact-grid">
-                <div class="impact-tile">
-                  <div class="impact-val" id="impactTrackers">1,448</div>
-                  <div class="impact-lbl">Trackers Blocked</div>
-                </div>
-                <div class="impact-tile">
-                  <div class="impact-val" id="impactBattery">3.8h</div>
-                  <div class="impact-lbl">Battery Saved</div>
-                </div>
-                <div class="impact-tile">
-                  <div class="impact-val" id="impactMic">22.4h</div>
-                  <div class="impact-lbl">Mic Locked</div>
-                </div>
-                <div class="impact-tile">
-                  <div class="impact-val" id="impactAirgapped">10</div>
-                  <div class="impact-lbl">Apps Air-Gapped</div>
-                </div>
-              </div>
-            </div>
 
-            <!-- Natural Language Command & Search Bar -->
-            <div class="search-command-bar">
-              <span class="search-icon">🔍</span>
-              <input type="text" id="androidSearchInput" class="search-input" placeholder="Type plain English: hotspot, nokia mode, torch, cut mic..." onkeydown="if(event.key==='Enter') executeSearchCommand()" />
-              <span class="search-mic" onclick="executeSearchCommand()" title="Execute Command">↵</span>
+              <div class="search-command-bar">
+                <span class="command-symbol">⌘</span>
+                <input type="text" id="androidSearchInput" class="search-input" placeholder="Type setting, command or app ('wifi off', 'brightness 60', 'waze')..." onkeydown="if(event.key==='Enter') executeSearchCommand()" />
+                <button class="btn-execute-cmd" onclick="executeSearchCommand()" title="Execute Command">↵</button>
+              </div>
             </div>
 
             <!-- Standard Clean App Grid (Official Vector Logos) -->
@@ -1563,34 +1665,53 @@ HTML_TEMPLATE = """
         document.getElementById('statBattery').innerText = `${state.battery_days_remaining} Days`;
       }
 
-      // 2. Hero Dual Pills
-      updateHeroPill('tileHotspot', 'subHotspot', state.is_hotspot_on, state.hotspot_ssid, 'Off');
-      updateHeroPill('tileNokia', 'subNokia', state.is_nokia_mode, '5.8 Days (60Hz)', 'Off');
-
-      // 3. One UI Secondary Squircles
-      updateSquircle('tileTorch', state.is_torch_on);
-      updateSquircle('tileGrayscale', state.is_grayscale);
-      updateSquircle('tileDigest', state.calm_digest_enabled);
-      updateSquircle('tileAirgap', state.auto_airgap_enabled);
-      updateSquircle('tileMic', state.is_mic_killed);
-      updateSquircle('tileMicro', state.is_micro_window);
-
-      // 4. Hotspot notification card inside shade
-      const hotspotCard = document.getElementById('shadeHotspotCard');
-      hotspotCard.style.display = state.is_hotspot_on ? 'flex' : 'none';
-
-      // 5. Calm Digest Count
-      const digestCount = state.calm_digest_items ? state.calm_digest_items.length : 0;
-      document.getElementById('digestCountBadge').innerText = `${digestCount} held quietly`;
-      document.getElementById('shadeDigestSub').innerText = `${digestCount} non-urgent alerts held quietly to save battery.`;
-
-      // 6. Impact Metrics Card
-      if (state.impact_stats) {
-        document.getElementById('impactTrackers').innerText = state.impact_stats.trackers_blocked.toLocaleString();
-        document.getElementById('impactBattery').innerText = `${state.impact_stats.battery_hours_saved}h`;
-        document.getElementById('impactMic').innerText = `${state.impact_stats.mic_hours_locked}h`;
-        document.getElementById('impactAirgapped').innerText = state.impact_stats.airgapped_apps;
+      // 2. Everyday Hero Quick Pills
+      updateHeroPill('tileWifi', 'subWifi', state.is_wifi_on, state.wifi_ssid || 'Home-5G', 'Off');
+      updateHeroPill('tileBt', 'subBt', state.is_bluetooth_on, state.bluetooth_device || 'Connected', 'Off');
+      
+      const soundMode = state.sound_mode || 'sound';
+      const soundIcon = soundMode === 'sound' ? '🔔' : (soundMode === 'vibrate' ? '📳' : '🔕');
+      const soundSub = soundMode.charAt(0).toUpperCase() + soundMode.slice(1);
+      const soundPill = document.getElementById('tileSound');
+      if (soundPill) {
+        if (soundMode !== 'silent') soundPill.classList.add('active');
+        else soundPill.classList.remove('active');
+        document.getElementById('iconSound').innerText = soundIcon;
+        document.getElementById('subSound').innerText = soundSub;
       }
+
+      updateHeroPill('tileTorch', 'subTorch', state.is_torch_on, 'On', 'Off');
+
+      // 3. System & Privacy Squircles
+      updateSquircle('tileHotspot', state.is_hotspot_on);
+      updateSquircle('tileGrayscale', state.is_grayscale);
+      updateSquircle('tileAirgap', state.auto_airgap_enabled);
+      updateSquircle('tileNokia', state.is_nokia_mode);
+
+      // 4. Dual Sliders: Brightness & Volume
+      if (state.brightness !== undefined) {
+        const bSlider = document.getElementById('sliderBrightness');
+        const bVal = document.getElementById('valBrightness');
+        if (bSlider) bSlider.value = state.brightness;
+        if (bVal) bVal.innerText = `${state.brightness}%`;
+      }
+      if (state.volume !== undefined) {
+        const vSlider = document.getElementById('sliderVolume');
+        const vVal = document.getElementById('valVolume');
+        if (vSlider) vSlider.value = state.volume;
+        if (vVal) vVal.innerText = `${state.volume}%`;
+      }
+
+      // 5. Hotspot notification card inside shade
+      const hotspotCard = document.getElementById('shadeHotspotCard');
+      if (hotspotCard) hotspotCard.style.display = state.is_hotspot_on ? 'flex' : 'none';
+
+      // 6. Calm Digest Count
+      const digestCount = state.calm_digest_items ? state.calm_digest_items.length : 0;
+      const countBadge = document.getElementById('digestCountBadge');
+      if (countBadge) countBadge.innerText = `${digestCount} held quietly`;
+      const shadeSub = document.getElementById('shadeDigestSub');
+      if (shadeSub) shadeSub.innerText = `${digestCount} non-urgent alerts held quietly to save battery.`;
 
       // 7. Foreground App Overlay
       const appWin = document.getElementById('activeAppWindow');
@@ -1639,6 +1760,25 @@ HTML_TEMPLATE = """
       } else {
         tile.classList.remove('active');
       }
+    }
+
+    
+    async function setBrightness(val) {
+      document.getElementById('valBrightness').innerText = `${val}%`;
+      await fetch('/api/set_brightness', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brightness: parseInt(val) })
+      });
+    }
+
+    async function setVolume(val) {
+      document.getElementById('valVolume').innerText = `${val}%`;
+      await fetch('/api/set_volume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ volume: parseInt(val) })
+      });
     }
 
     async function toggleFeature(featureName) {
@@ -2014,7 +2154,26 @@ def toggle_feature():
     data = request.get_json(silent=True) or {}
     feat = data.get("feature")
 
-    if feat == "hotspot":
+    if feat == "wifi":
+        STATE["is_wifi_on"] = not STATE.get("is_wifi_on", True)
+        act = "CONNECTED (Home-5G)" if STATE["is_wifi_on"] else "DISCONNECTED"
+        STATE["kernel_logs"].append(f"[Netd] wlan0 interface state -> {act}")
+        msg = f"📶 Wi-Fi {act}."
+
+    elif feat == "bluetooth":
+        STATE["is_bluetooth_on"] = not STATE.get("is_bluetooth_on", True)
+        act = "CONNECTED (WH-1000XM5)" if STATE["is_bluetooth_on"] else "OFF"
+        STATE["kernel_logs"].append(f"[BlueDroid] Bluetooth adapter state -> {act}")
+        msg = f"ᛒ Bluetooth {act}."
+
+    elif feat == "sound":
+        modes = ["sound", "vibrate", "silent"]
+        curr = STATE.get("sound_mode", "sound")
+        STATE["sound_mode"] = modes[(modes.index(curr) + 1) % len(modes)]
+        STATE["kernel_logs"].append(f"[AudioService] Ringer mode changed to {STATE['sound_mode'].upper()}")
+        msg = f"🔔 Sound mode: {STATE['sound_mode'].capitalize()}."
+
+    elif feat == "hotspot":
         STATE["is_hotspot_on"] = not STATE["is_hotspot_on"]
         act = "ON" if STATE["is_hotspot_on"] else "OFF"
         if STATE["is_hotspot_on"]:
@@ -2196,6 +2355,65 @@ def process_command():
     data = request.get_json(silent=True) or {}
     raw_cmd = data.get("command", "").strip()
     lower = raw_cmd.lower()
+
+    # WI-FI TOGGLE & COMMAND
+    if "wifi" in lower or "wi-fi" in lower:
+        if "off" in lower or "disconnect" in lower or "disable" in lower:
+            STATE["is_wifi_on"] = False
+        elif "on" in lower or "connect" in lower or "enable" in lower:
+            STATE["is_wifi_on"] = True
+        else:
+            STATE["is_wifi_on"] = not STATE.get("is_wifi_on", True)
+        act = "CONNECTED (Home-5G)" if STATE["is_wifi_on"] else "DISCONNECTED"
+        STATE["kernel_logs"].append(f"[Netd] wlan0 interface state -> {act}")
+        return jsonify({"success": True, "message": f"📶 Wi-Fi is now {act}.", "state": STATE})
+
+    # BLUETOOTH TOGGLE & COMMAND
+    if "bluetooth" in lower or " bt" in lower or lower.startswith("bt"):
+        if "off" in lower or "disconnect" in lower or "disable" in lower:
+            STATE["is_bluetooth_on"] = False
+        elif "on" in lower or "connect" in lower or "enable" in lower:
+            STATE["is_bluetooth_on"] = True
+        else:
+            STATE["is_bluetooth_on"] = not STATE.get("is_bluetooth_on", True)
+        act = "CONNECTED (WH-1000XM5)" if STATE["is_bluetooth_on"] else "OFF"
+        STATE["kernel_logs"].append(f"[BlueDroid] Bluetooth adapter state -> {act}")
+        return jsonify({"success": True, "message": f"ᛒ Bluetooth is now {act}.", "state": STATE})
+
+    # SOUND / VIBRATE / SILENT MODE
+    if any(w in lower for w in ["sound", "vibrate", "silent", "ringer", "dnd"]):
+        if "silent" in lower or "mute" in lower or "dnd" in lower:
+            STATE["sound_mode"] = "silent"
+        elif "vibrate" in lower or "vib" in lower:
+            STATE["sound_mode"] = "vibrate"
+        elif "sound" in lower or "ring" in lower:
+            STATE["sound_mode"] = "sound"
+        else:
+            modes = ["sound", "vibrate", "silent"]
+            curr = STATE.get("sound_mode", "sound")
+            STATE["sound_mode"] = modes[(modes.index(curr) + 1) % len(modes)]
+        STATE["kernel_logs"].append(f"[AudioService] Ringer mode changed to {STATE['sound_mode'].upper()}")
+        return jsonify({"success": True, "message": f"🔔 Sound mode: {STATE['sound_mode'].capitalize()}.", "state": STATE})
+
+    # BRIGHTNESS SLIDER / COMMAND
+    if "brightness" in lower or ("light" in lower and any(c.isdigit() for c in lower)):
+        import re
+        nums = re.findall(r'\d+', lower)
+        if nums:
+            val = max(10, min(100, int(nums[0])))
+            STATE["brightness"] = val
+            STATE["kernel_logs"].append(f"[DisplayPower] Backlight PWM set to {val}%")
+            return jsonify({"success": True, "message": f"☀️ Brightness set to {val}%.", "state": STATE})
+
+    # VOLUME SLIDER / COMMAND
+    if "volume" in lower:
+        import re
+        nums = re.findall(r'\d+', lower)
+        if nums:
+            val = max(0, min(100, int(nums[0])))
+            STATE["volume"] = val
+            STATE["kernel_logs"].append(f"[AudioHAL] Master hardware gain set to {val}%")
+            return jsonify({"success": True, "message": f"🔊 Media volume set to {val}%.", "state": STATE})
 
     # THEME / PALETTE CHANGE
     if "theme" in lower or "color" in lower or "palette" in lower:
