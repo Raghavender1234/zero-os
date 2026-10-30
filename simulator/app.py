@@ -181,6 +181,25 @@ HTML_TEMPLATE = """
     }
 
     
+    
+    /* IN-CALL BUTTONS */
+    .in-call-btn {
+      background: #1c1c1e;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 10px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      cursor: pointer;
+      transition: none !important;
+      outline: none;
+    }
+    .in-call-icon { font-size: 1.25rem; margin-bottom: 2px; }
+    .in-call-label { font-size: 0.68rem; color: #8e8e93; }
+
     /* DIALER TABS */
     .dialer-tab {
       background: none;
@@ -1620,6 +1639,12 @@ HTML_TEMPLATE = """
       if (window.location.search.includes('shade')) {
         setTimeout(openNotificationShade, 250);
       }
+      if (window.location.search.includes('call')) {
+        setTimeout(() => {
+          launchForegroundApp('phone');
+          setTimeout(() => startCall('Mom', '+1 (555) 234-5678'), 200);
+        }, 200);
+      }
       const res = await fetch('/api/state');
       state = await res.json();
       renderIcons();
@@ -1658,6 +1683,71 @@ HTML_TEMPLATE = """
     }
 
     let currentDial = "";
+    let isCallActive = false;
+    let isCallRecording = false;
+    let callContactName = "Mom";
+    let callContactNumber = "+1 (555) 234-5678";
+    let callSeconds = 0;
+    let callInterval = null;
+
+    function startCall(name, number) {
+      isCallActive = true;
+      isCallRecording = false;
+      callContactName = name || (currentDial || "Mom");
+      callContactNumber = number || (currentDial || "+1 (555) 234-5678");
+      callSeconds = 0;
+      if (callInterval) clearInterval(callInterval);
+      callInterval = setInterval(() => {
+        callSeconds++;
+        const timerEl = document.getElementById('callTimerDisplay');
+        if (timerEl) {
+          const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+          const secs = String(callSeconds % 60).padStart(2, '0');
+          timerEl.innerText = `${mins}:${secs}`;
+        }
+      }, 1000);
+      renderActiveAppContent('phone', false);
+    }
+
+    function toggleCallRecording() {
+      isCallRecording = !isCallRecording;
+      const btn = document.getElementById('btnCallRecord');
+      if (isCallRecording) {
+        if (btn) {
+          btn.style.background = '#ff453a';
+          btn.style.color = '#fff';
+          btn.innerHTML = '🔴 Recording...';
+        }
+        showToast('⏺ Local Call Recording STARTED (Directly to device · No cloud / No announcements)');
+      } else {
+        if (btn) {
+          btn.style.background = '#27272a';
+          btn.style.color = '#fff';
+          btn.innerHTML = '⏺ Record';
+        }
+        showToast('✅ Call Recording SAVED to /storage/Recordings/' + callContactName.replace(/\s+/g, '_') + '.m4a');
+      }
+    }
+
+    function endCall() {
+      isCallActive = false;
+      isCallRecording = false;
+      if (callInterval) clearInterval(callInterval);
+      currentDial = "";
+      renderActiveAppContent('phone', false);
+      showToast('🔒 Call ENDED. Microphone hardware register LOCKED instantly.');
+    }
+
+    function copyAndAutoDeleteOTP(code) {
+      navigator.clipboard?.writeText(code);
+      showToast('📋 Copied OTP ' + code + '! Message will self-destruct in 15 minutes.');
+      const card = document.getElementById('otpCard');
+      if (card) {
+        card.style.opacity = '0.4';
+        card.innerHTML = `<div style="font-size:0.75rem; color:#30d158; text-align:center; padding:6px;">✓ Copied! Auto-delete timer running (14m 58s remaining)...</div>`;
+      }
+    }
+
     
     function switchDialerTab(tab) {
       document.getElementById('dialerViewRecents').style.display = tab === 'recents' ? 'flex' : 'none';
@@ -1956,106 +2046,247 @@ HTML_TEMPLATE = """
           </div>
         `;
       } else if (appKey === 'phone') {
+        if (isCallActive) {
+          // ==========================================
+          // ACTIVE IN-CALL SCREEN (0W TRUE OLED BLACK)
+          // ==========================================
+          body.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:space-between; width:100%; height:100%; padding:14px 0 8px 0; background:#000;">
+              
+              <!-- Contact Info & Timer -->
+              <div style="display:flex; flex-direction:column; align-items:center;">
+                <div style="width:72px; height:72px; border-radius:50%; background:#1c1c1e; border:1px solid rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:bold; color:#fff; margin-bottom:12px;">
+                  ${callContactName.charAt(0)}
+                </div>
+                <div style="font-size:1.25rem; font-weight:700; color:#fff;">${callContactName}</div>
+                <div style="font-size:0.78rem; color:#8e8e93; margin-top:2px;">${callContactNumber}</div>
+                <div style="font-size:0.85rem; color:#30d158; font-family:'JetBrains Mono', monospace; font-weight:600; margin-top:8px;" id="callTimerDisplay">00:01</div>
+              </div>
+
+              <!-- In-Call Actions Grid (Including 1-Tap Record) -->
+              <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; width:100%; max-width:270px; margin:20px 0;">
+                
+                <button class="in-call-btn" onclick="showToast('🔇 Microphone muted for this call')">
+                  <div class="in-call-icon">🔇</div>
+                  <div class="in-call-label">Mute</div>
+                </button>
+
+                <button class="in-call-btn" onclick="showToast('🔢 Dialpad opened')">
+                  <div class="in-call-icon">🔢</div>
+                  <div class="in-call-label">Keypad</div>
+                </button>
+
+                <button class="in-call-btn" onclick="showToast('🔊 Speakerphone toggled')">
+                  <div class="in-call-icon">🔊</div>
+                  <div class="in-call-label">Speaker</div>
+                </button>
+
+                <!-- 1-TAP LOCAL CALL RECORDER -->
+                <button id="btnCallRecord" class="in-call-btn" style="background:${isCallRecording ? '#ff453a' : '#27272a'}; color:#fff; border-radius:18px; padding:10px 4px;" onclick="toggleCallRecording()">
+                  <div class="in-call-icon">${isCallRecording ? '🔴' : '⏺'}</div>
+                  <div class="in-call-label" style="font-weight:700;">${isCallRecording ? 'Recording...' : 'Record'}</div>
+                </button>
+
+                <button class="in-call-btn" onclick="showToast('➕ Add call')">
+                  <div class="in-call-icon">➕</div>
+                  <div class="in-call-label">Add Call</div>
+                </button>
+
+                <button class="in-call-btn" onclick="showToast('👤 Contact card opened')">
+                  <div class="in-call-icon">👤</div>
+                  <div class="in-call-label">Contact</div>
+                </button>
+
+              </div>
+
+              <!-- End Call Button -->
+              <div style="width:100%; display:flex; justify-content:center;">
+                <button style="width:64px; height:64px; border-radius:50%; background:#ff453a; border:none; display:flex; align-items:center; justify-content:center; font-size:1.8rem; color:#fff; cursor:pointer; box-shadow:0 6px 20px rgba(255, 69, 58, 0.4);" onclick="endCall()" title="End Call">
+                  🛑
+                </button>
+              </div>
+
+            </div>
+          `;
+        } else {
+          // ==========================================
+          // DIALER TABS: RECENTS, CONTACTS, KEYPAD
+          // ==========================================
+          body.innerHTML = `
+            <div style="display:flex; flex-direction:column; width:100%; height:100%; overflow:hidden;">
+              
+              <!-- Standard Android Dialer Tabs -->
+              <div style="display:flex; justify-content:space-around; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px; margin-bottom:8px;">
+                <button id="dialerTabRecents" class="dialer-tab active" onclick="switchDialerTab('recents')">🕒 Recents</button>
+                <button id="dialerTabContacts" class="dialer-tab" onclick="switchDialerTab('contacts')">👥 Contacts</button>
+                <button id="dialerTabKeypad" class="dialer-tab" onclick="switchDialerTab('keypad')">🔢 Keypad</button>
+              </div>
+
+              <!-- 1. RECENTS CALL HISTORY TAB -->
+              <div id="dialerViewRecents" style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1; padding-right:2px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px; height:36px; border-radius:50%; background:#2563eb; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">M</div>
+                    <div>
+                      <div style="font-size:0.85rem; font-weight:600; color:#fff;">Mom</div>
+                      <div style="font-size:0.7rem; color:#94a3b8;">↙ Incoming · Mobile · 14m ago</div>
+                    </div>
+                  </div>
+                  <button style="background:none; border:none; color:#30d158; font-size:1.1rem; cursor:pointer;" onclick="startCall('Mom', '+1 (555) 234-5678')">📞</button>
+                </div>
+
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px; height:36px; border-radius:50%; background:#ea580c; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">S</div>
+                    <div>
+                      <div style="font-size:0.85rem; font-weight:600; color:#ff453a;">Sarah Jenkins (Missed)</div>
+                      <div style="font-size:0.7rem; color:#94a3b8;">↙ Missed · Mobile · 2h ago</div>
+                    </div>
+                  </div>
+                  <button style="background:none; border:none; color:#30d158; font-size:1.1rem; cursor:pointer;" onclick="startCall('Sarah Jenkins', '+1 (555) 987-6543')">📞</button>
+                </div>
+
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px; height:36px; border-radius:50%; background:#059669; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">A</div>
+                    <div>
+                      <div style="font-size:0.85rem; font-weight:600; color:#fff;">Alex Rivera</div>
+                      <div style="font-size:0.7rem; color:#94a3b8;">↗ Outgoing · 4m 12s · Yesterday</div>
+                    </div>
+                  </div>
+                  <button style="background:none; border:none; color:#30d158; font-size:1.1rem; cursor:pointer;" onclick="startCall('Alex Rivera', '+1 (555) 345-6789')">📞</button>
+                </div>
+
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px; height:36px; border-radius:50%; background:#64748b; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">+44</div>
+                    <div>
+                      <div style="font-size:0.85rem; font-weight:600; color:#fff;">+44 7911 123456</div>
+                      <div style="font-size:0.7rem; color:#94a3b8;">↙ Incoming · 1m 05s · 2 days ago</div>
+                    </div>
+                  </div>
+                  <button style="background:none; border:none; color:#30d158; font-size:1.1rem; cursor:pointer;" onclick="startCall('+44 7911 123456', '+44 7911 123456')">📞</button>
+                </div>
+              </div>
+
+              <!-- 2. CONTACTS TAB -->
+              <div id="dialerViewContacts" style="display:none; flex-direction:column; gap:8px; overflow-y:auto; flex:1; padding-right:2px;">
+                <input type="text" placeholder="🔍 Search 182 contacts..." style="background:#171717; border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:8px 12px; color:#fff; font-size:0.8rem; margin-bottom:4px;" />
+                
+                <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:4px;">A</div>
+                <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between; cursor:pointer;" onclick="startCall('Alex Rivera', '+1 (555) 345-6789')">
+                  <span>Alex Rivera</span>
+                  <span style="color:#64748b; font-size:0.72rem;">Mobile</span>
+                </div>
+                <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between; cursor:pointer;" onclick="startCall('Aunt Clara', '+1 (555) 888-9999')">
+                  <span>Aunt Clara</span>
+                  <span style="color:#64748b; font-size:0.72rem;">Home</span>
+                </div>
+
+                <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:8px;">D</div>
+                <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between; cursor:pointer;" onclick="startCall('Dr. Michael Patel', '+1 (555) 444-2222')">
+                  <span>Dr. Michael Patel</span>
+                  <span style="color:#64748b; font-size:0.72rem;">Work</span>
+                </div>
+
+                <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:8px;">M</div>
+                <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between; cursor:pointer;" onclick="startCall('Mom', '+1 (555) 234-5678')">
+                  <span>Mom</span>
+                  <span style="color:#64748b; font-size:0.72rem;">Favorite</span>
+                </div>
+
+                <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:8px;">S</div>
+                <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between; cursor:pointer;" onclick="startCall('Sarah Jenkins', '+1 (555) 987-6543')">
+                  <span>Sarah Jenkins</span>
+                  <span style="color:#64748b; font-size:0.72rem;">Mobile</span>
+                </div>
+              </div>
+
+              <!-- 3. KEYPAD TAB (STATIC ZERO-ANIMATION TACTILE KEYS) -->
+              <div id="dialerViewKeypad" style="display:none; flex-direction:column; align-items:center; justify-content:center; flex:1;">
+                <div style="font-size:1.35rem; font-weight:300; color:#fff; margin-bottom:10px; letter-spacing:1px; min-height:28px;" id="dialDisplay">Enter Number</div>
+                <div class="dialpad-grid">
+                  ${[1,2,3,4,5,6,7,8,9,'*',0,'#'].map(n => `<div class="dial-key" onclick="appendDial('${n}')">${n}</div>`).join('')}
+                </div>
+                <div style="margin-top:10px; display:flex; gap:14px; align-items:center;">
+                  <button class="call-btn-green" onclick="startCall(currentDial, currentDial)">📞 Call</button>
+                  <button class="call-btn-del" onclick="clearDial()">⌫</button>
+                </div>
+              </div>
+
+            </div>
+          `;
+        }
+      } else if (appKey === 'messages') {
+        // ==========================================
+        // ZEROMESSAGES: 2FA AUTO-CLEANUP & THREADS
+        // ==========================================
         body.innerHTML = `
           <div style="display:flex; flex-direction:column; width:100%; height:100%; overflow:hidden;">
             
-            <!-- Standard Android Dialer Tabs -->
-            <div style="display:flex; justify-content:space-around; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px; margin-bottom:8px;">
-              <button id="dialerTabRecents" class="dialer-tab active" onclick="switchDialerTab('recents')">🕒 Recents</button>
-              <button id="dialerTabContacts" class="dialer-tab" onclick="switchDialerTab('contacts')">👥 Contacts</button>
-              <button id="dialerTabKeypad" class="dialer-tab" onclick="switchDialerTab('keypad')">🔢 Keypad</button>
-            </div>
-
-            <!-- 1. RECENTS CALL HISTORY TAB -->
-            <div id="dialerViewRecents" style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1; padding-right:2px;">
-              <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <div style="width:36px; height:36px; border-radius:50%; background:#2563eb; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">M</div>
-                  <div>
-                    <div style="font-size:0.85rem; font-weight:600; color:#fff;">Mom</div>
-                    <div style="font-size:0.7rem; color:#94a3b8;">↙ Incoming · Mobile · 14m ago</div>
-                  </div>
-                </div>
-                <button style="background:none; border:none; color:#30d158; font-size:1.1rem; cursor:pointer;" onclick="showToast('📞 Calling Mom...')">📞</button>
+            <!-- 1-TAP 2FA / OTP HERO CARD -->
+            <div id="otpCard" style="background:#121212; border:1px solid rgba(48, 209, 88, 0.3); border-radius:16px; padding:12px; margin-bottom:10px; box-shadow:0 4px 16px rgba(0,0,0,0.4);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <span style="font-size:0.72rem; color:#30d158; font-weight:700;">🔐 BANKING 2FA / OTP DETECTED</span>
+                <span style="font-size:0.68rem; color:#8e8e93;">1m ago</span>
               </div>
-
-              <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <div style="width:36px; height:36px; border-radius:50%; background:#ea580c; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">S</div>
-                  <div>
-                    <div style="font-size:0.85rem; font-weight:600; color:#ff453a;">Sarah Jenkins (Missed)</div>
-                    <div style="font-size:0.7rem; color:#94a3b8;">↙ Missed · Mobile · 2h ago</div>
-                  </div>
-                </div>
-                <button style="background:none; border:none; color:#30d158; font-size:1.1rem; cursor:pointer;" onclick="showToast('📞 Calling Sarah...')">📞</button>
+              <div style="font-size:0.85rem; color:#fff; margin-bottom:8px;">
+                <b>HDFC Bank / Chase:</b> Use code <b style="font-size:1.15rem; color:#30d158; font-family:'JetBrains Mono', monospace; letter-spacing:1px;">849 201</b> to verify transaction.
               </div>
-
-              <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <div style="width:36px; height:36px; border-radius:50%; background:#059669; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">A</div>
-                  <div>
-                    <div style="font-size:0.85rem; font-weight:600; color:#fff;">Alex Rivera</div>
-                    <div style="font-size:0.7rem; color:#94a3b8;">↗ Outgoing · 4m 12s · Yesterday</div>
-                  </div>
-                </div>
-                <button style="background:none; border:none; color:#30d158; font-size:1.1rem; cursor:pointer;" onclick="showToast('📞 Calling Alex...')">📞</button>
-              </div>
-
-              <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <div style="width:36px; height:36px; border-radius:50%; background:#64748b; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">+44</div>
-                  <div>
-                    <div style="font-size:0.85rem; font-weight:600; color:#fff;">+44 7911 123456</div>
-                    <div style="font-size:0.7rem; color:#94a3b8;">↙ Incoming · 1m 05s · 2 days ago</div>
-                  </div>
-                </div>
-                <button style="background:none; border:none; color:#30d158; font-size:1.1rem; cursor:pointer;" onclick="showToast('📞 Calling +44 7911 123456...')">📞</button>
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <button style="background:#30d158; color:#000; border:none; padding:7px 14px; border-radius:12px; font-size:0.75rem; font-weight:700; cursor:pointer;" onclick="copyAndAutoDeleteOTP('849201')">
+                  📋 Copy 849201 & Auto-Delete in 15m
+                </button>
+                <span style="font-size:0.65rem; color:#8e8e93;">Expires in 14m</span>
               </div>
             </div>
 
-            <!-- 2. CONTACTS TAB -->
-            <div id="dialerViewContacts" style="display:none; flex-direction:column; gap:8px; overflow-y:auto; flex:1; padding-right:2px;">
-              <input type="text" placeholder="🔍 Search 182 contacts..." style="background:#171717; border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:8px 12px; color:#fff; font-size:0.8rem; margin-bottom:4px;" />
+            <!-- Messages Conversation List -->
+            <div style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1; padding-right:2px;">
               
-              <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:4px;">A</div>
-              <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between;">
-                <span>Alex Rivera</span>
-                <span style="color:#64748b; font-size:0.72rem;">Mobile</span>
-              </div>
-              <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between;">
-                <span>Aunt Clara</span>
-                <span style="color:#64748b; font-size:0.72rem;">Home</span>
-              </div>
-
-              <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:8px;">D</div>
-              <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between;">
-                <span>Dr. Michael Patel</span>
-                <span style="color:#64748b; font-size:0.72rem;">Work</span>
+              <div style="display:flex; align-items:center; gap:12px; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04); cursor:pointer;">
+                <div style="width:38px; height:38px; border-radius:50%; background:#2563eb; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.9rem;">M</div>
+                <div style="flex:1;">
+                  <div style="display:flex; justify-content:space-between;">
+                    <span style="font-size:0.85rem; font-weight:600; color:#fff;">Mom</span>
+                    <span style="font-size:0.68rem; color:#8e8e93;">4m ago</span>
+                  </div>
+                  <div style="font-size:0.74rem; color:#8e8e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Call me when you get home this evening!</div>
+                </div>
               </div>
 
-              <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:8px;">M</div>
-              <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between;">
-                <span>Mom</span>
-                <span style="color:#64748b; font-size:0.72rem;">Favorite</span>
+              <div style="display:flex; align-items:center; gap:12px; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04); cursor:pointer;">
+                <div style="width:38px; height:38px; border-radius:50%; background:#ea580c; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.9rem;">S</div>
+                <div style="flex:1;">
+                  <div style="display:flex; justify-content:space-between;">
+                    <span style="font-size:0.85rem; font-weight:600; color:#fff;">Sarah Jenkins</span>
+                    <span style="font-size:0.68rem; color:#8e8e93;">1h ago</span>
+                  </div>
+                  <div style="font-size:0.74rem; color:#8e8e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Are we still on for lunch tomorrow afternoon?</div>
+                </div>
               </div>
 
-              <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:8px;">S</div>
-              <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between;">
-                <span>Sarah Jenkins</span>
-                <span style="color:#64748b; font-size:0.72rem;">Mobile</span>
+              <div style="display:flex; align-items:center; gap:12px; padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04); cursor:pointer;">
+                <div style="width:38px; height:38px; border-radius:50%; background:#059669; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.9rem;">A</div>
+                <div style="flex:1;">
+                  <div style="display:flex; justify-content:space-between;">
+                    <span style="font-size:0.85rem; font-weight:600; color:#fff;">Alex Rivera</span>
+                    <span style="font-size:0.68rem; color:#8e8e93;">Yesterday</span>
+                  </div>
+                  <div style="font-size:0.74rem; color:#8e8e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Sent you the project documents over email.</div>
+                </div>
               </div>
-            </div>
 
-            <!-- 3. KEYPAD TAB -->
-            <div id="dialerViewKeypad" style="display:none; flex-direction:column; align-items:center; justify-content:center; flex:1;">
-              <div style="font-size:1.35rem; font-weight:300; color:#fff; margin-bottom:10px; letter-spacing:1px; min-height:28px;" id="dialDisplay">Enter Number</div>
-              <div class="dialpad-grid">
-                ${[1,2,3,4,5,6,7,8,9,'*',0,'#'].map(n => `<div class="dial-key" onclick="appendDial('${n}')">${n}</div>`).join('')}
+              <!-- Calm Digest Marketing SMS Filter Banner -->
+              <div style="background:#171717; border-radius:12px; padding:10px; margin-top:8px; border:1px solid rgba(255,255,255,0.06);">
+                <div style="font-size:0.72rem; color:#ffd60a; font-weight:600; display:flex; align-items:center; gap:6px;">
+                  <span>🔕 Calm Digest Filter Active</span>
+                </div>
+                <div style="font-size:0.7rem; color:#8e8e93; margin-top:2px;">
+                  3 marketing SMS (Uber, Domino's, Telecom) held quietly without notification buzz.
+                </div>
               </div>
-              <div style="margin-top:10px; display:flex; gap:14px; align-items:center;">
-                <button class="call-btn-green" onclick="showToast('📞 Dialing encrypted voice...')">📞 Call</button>
-                <button class="call-btn-del" onclick="clearDial()">⌫</button>
-              </div>
+
             </div>
 
           </div>
