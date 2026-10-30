@@ -37,11 +37,24 @@ class ZeroLauncherActivity : ComponentActivity() {
 
     private lateinit var hardwareController: HardwareController
 
-    // Confirmation Card State
+    // System UI State
     private var pendingAction by mutableStateOf<PendingConfirmation?>(null)
     private var isMicroWindowMode by mutableStateOf(false)
+    private var isNotificationShadeOpen by mutableStateOf(false)
+    private var activeAppView by mutableStateOf<String?>(null) // null = Home, "phone", "messages"
+    private var activeCallContact by mutableStateOf<Pair<String, String>?>(null)
     private var commandInput by mutableStateOf("")
     private var systemLog by mutableStateOf<String?>(null)
+
+    // Hardware State
+    private var isWifiOn by mutableStateOf(true)
+    private var wifiSsid by mutableStateOf("Home-5G")
+    private var isBluetoothOn by mutableStateOf(true)
+    private var bluetoothDevice by mutableStateOf("WH-1000XM5")
+    private var soundMode by mutableStateOf("sound") // "sound", "vibrate", "silent"
+    private var brightness by mutableStateOf(0.85f)
+    private var volume by mutableStateOf(0.70f)
+    private var isHotspotOn by mutableStateOf(false)
 
     // Installed demo apps with privacy shield tracking
     private val appShields = mutableStateMapOf(
@@ -60,37 +73,104 @@ class ZeroLauncherActivity : ComponentActivity() {
             ZeroTheme {
                 val timeString = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
 
-                if (isMicroWindowMode) {
-                    MicroDisplayOverlay(
-                        currentTime = timeString,
-                        batteryPercent = 88,
-                        isGrayscale = hardwareController.isGrayscaleActive(),
-                        onExpandFullDisplay = { isMicroWindowMode = false }
-                    ) {
-                        TerminalInputRow(
-                            input = commandInput,
-                            onValueChange = { commandInput = it },
-                            onExecute = { executeCommand(commandInput) }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (isMicroWindowMode) {
+                        MicroDisplayOverlay(
+                            currentTime = timeString,
+                            batteryPercent = 88,
+                            isGrayscale = hardwareController.isGrayscaleActive(),
+                            onExpandFullDisplay = { isMicroWindowMode = false }
+                        ) {
+                            TerminalInputRow(
+                                input = commandInput,
+                                onValueChange = { commandInput = it },
+                                onExecute = { executeCommand(commandInput) }
+                            )
+                        }
+                    } else if (activeCallContact != null) {
+                        InCallScreen(
+                            contactName = activeCallContact!!.first,
+                            contactNumber = activeCallContact!!.second,
+                            onEndCall = { activeCallContact = null },
+                            onToast = { showToast(it) }
+                        )
+                    } else if (activeAppView == "messages") {
+                        ZeroMessagesView(onToast = { showToast(it) })
+                    } else {
+                        MainLauncherScreen(
+                            currentTime = timeString,
+                            commandInput = commandInput,
+                            onInputChange = { commandInput = it },
+                            onExecuteCommand = { executeCommand(it) },
+                            appShields = appShields.values.toList(),
+                            pendingAction = pendingAction,
+                            systemLog = systemLog,
+                            onOpenShade = { isNotificationShadeOpen = true },
+                            onConfirmAction = {
+                                pendingAction?.action?.invoke()
+                                pendingAction = null
+                            },
+                            onDismissAction = { pendingAction = null },
+                            onToggleData = { app -> toggleDataShield(app) },
+                            onToggleMic = { app -> toggleMicShield(app) },
+                            onToggleCam = { app -> toggleCamShield(app) },
+                            onToggleFreeze = { app -> toggleFreezeShield(app) }
                         )
                     }
-                } else {
-                    MainLauncherScreen(
+
+                    // Pull-Down Notification Shade & Quick Settings Overlay
+                    NotificationShadeOverlay(
+                        isOpen = isNotificationShadeOpen,
                         currentTime = timeString,
-                        commandInput = commandInput,
-                        onInputChange = { commandInput = it },
-                        onExecuteCommand = { executeCommand(it) },
-                        appShields = appShields.values.toList(),
-                        pendingAction = pendingAction,
-                        systemLog = systemLog,
-                        onConfirmAction = {
-                            pendingAction?.action?.invoke()
-                            pendingAction = null
+                        batteryPercent = 88,
+                        batteryDaysRemaining = 4.2f,
+                        isWifiOn = isWifiOn,
+                        wifiSsid = wifiSsid,
+                        isBluetoothOn = isBluetoothOn,
+                        bluetoothDevice = bluetoothDevice,
+                        soundMode = soundMode,
+                        isTorchOn = hardwareController.isFlashlightOn,
+                        isHotspotOn = isHotspotOn,
+                        isGrayscaleOn = hardwareController.isGrayscaleActive(),
+                        isAirGapActive = true,
+                        isNokiaModeOn = false,
+                        brightness = brightness,
+                        volume = volume,
+                        onBrightnessChange = { brightness = it },
+                        onVolumeChange = { volume = it },
+                        onToggleWifi = {
+                            isWifiOn = !isWifiOn
+                            showToast(if (isWifiOn) "📶 Wi-Fi connected to $wifiSsid" else "📶 Wi-Fi disconnected")
                         },
-                        onDismissAction = { pendingAction = null },
-                        onToggleData = { app -> toggleDataShield(app) },
-                        onToggleMic = { app -> toggleMicShield(app) },
-                        onToggleCam = { app -> toggleCamShield(app) },
-                        onToggleFreeze = { app -> toggleFreezeShield(app) }
+                        onToggleBluetooth = {
+                            isBluetoothOn = !isBluetoothOn
+                            showToast(if (isBluetoothOn) "ᛒ Bluetooth connected to $bluetoothDevice" else "ᛒ Bluetooth OFF")
+                        },
+                        onCycleSoundMode = {
+                            soundMode = when (soundMode) {
+                                "sound" -> "vibrate"
+                                "vibrate" -> "silent"
+                                else -> "sound"
+                            }
+                            showToast("🔔 Sound mode: ${soundMode.replaceFirstChar { it.uppercase() }}")
+                        },
+                        onToggleTorch = {
+                            hardwareController.setFlashlight(!hardwareController.isFlashlightOn)
+                        },
+                        onToggleHotspot = {
+                            isHotspotOn = !isHotspotOn
+                            showToast(if (isHotspotOn) "(((•))) Hotspot ACTIVE: Broadcasting ZeroPhone-5G" else "(((•))) Hotspot OFF")
+                        },
+                        onToggleGrayscale = {
+                            hardwareController.toggleGrayscale()
+                        },
+                        onToggleAirGap = {
+                            showToast("🛡️ Auto Air-Gap policy is ACTIVE (Zero background data leakage)")
+                        },
+                        onToggleNokiaMode = {
+                            showToast("🔋 Nokia 5.8-Day Ultra-Save mode toggled")
+                        },
+                        onCloseShade = { isNotificationShadeOpen = false }
                     )
                 }
             }
@@ -107,6 +187,10 @@ class ZeroLauncherActivity : ComponentActivity() {
             return true
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    private fun showToast(msg: String) {
+        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
     }
 
     private fun executeCommand(input: String) {
@@ -185,6 +269,15 @@ class ZeroLauncherActivity : ComponentActivity() {
                     }
                 }
                 systemLog = "📶 Mobile & Wi-Fi restored for: ${cmd.targetApps.joinToString()}"
+            }
+            is ZeroCommand.UnmuteMicrophone -> {
+                cmd.targetApps.forEach { appName ->
+                    appShields[appName]?.let { app ->
+                        app.isMicMuted = false
+                        SingleSessionPermissionManager.setMicHardMuted(app.packageName, false)
+                    }
+                }
+                systemLog = "🎙️ Microphone UNMUTED: Restored to automatic single-session for: ${cmd.targetApps.joinToString()}."
             }
             is ZeroCommand.MuteMicrophone -> {
                 cmd.targetApps.forEach { target ->
@@ -279,6 +372,7 @@ fun MainLauncherScreen(
     appShields: List<AppState>,
     pendingAction: PendingConfirmation?,
     systemLog: String?,
+    onOpenShade: () -> Unit,
     onConfirmAction: () -> Unit,
     onDismissAction: () -> Unit,
     onToggleData: (AppState) -> Unit,
@@ -299,7 +393,9 @@ fun MainLauncherScreen(
             // TOP STATUS & MINIMALIST CLOCK
             Column {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenShade() },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
