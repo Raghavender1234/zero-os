@@ -27,7 +27,7 @@ jobs:
       - name: Set up Build Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y openssl libncurses5
+          sudo apt-get install -y openssl libncurses6 libncursesw6 || sudo apt-get install -y openssl
 
       - name: Verify & Generate AVB 2.0 Cryptographic Keys
         run: |
