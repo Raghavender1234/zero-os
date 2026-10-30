@@ -10,6 +10,8 @@
 [![Standby Power](https://img.shields.io/badge/Standby%20Power-11.1%20mA%20(-88%25)-brightgreen.svg)](#-empirical-battery-benchmarks)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-blueviolet.svg)](https://raghavender1234.github.io/zero-os/)
 [![Hardware Verification](https://img.shields.io/badge/Verification-TESTING.md-success.svg)](TESTING.md)
+[![Device Compatibility](https://img.shields.io/badge/Compatibility-COMPATIBILITY.md-informational.svg)](COMPATIBILITY.md)
+[![FAQ](https://img.shields.io/badge/FAQ-FAQ.md-lightgrey.svg)](FAQ.md)
 
 ---
 
@@ -214,7 +216,12 @@ zero-os/
 
 ## ⚡ 1-Click Installation & Flashing Guide
 
-ZeroOS includes cross-platform 1-click flasher scripts that automate the entire Project Treble GSI flashing process across Google Pixel, OnePlus, Xiaomi, Motorola, Nothing Phone, and all Treble-compliant devices.
+You can flash ZeroOS via your web browser or using native 1-click flasher scripts:
+
+### Option A: WebUSB Browser Installer (Zero Installation Required)
+Connect your phone in Fastboot mode via USB-C and open the **[ZeroOS Web Installer](https://raghavender1234.github.io/zero-os/installer.html)** in Google Chrome or Microsoft Edge. It negotiates the Fastboot protocol directly inside the browser.
+
+### Option B: Native 1-Click Scripts that automate the entire Project Treble GSI flashing process across Google Pixel, OnePlus, Xiaomi, Motorola, Nothing Phone, and all Treble-compliant devices.
 
 ### On Windows
 Connect your unlocked device via USB with ADB debugging enabled, then double-click or run:

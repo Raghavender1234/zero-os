@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZeroStore & Privileged Package Installer Priv-App Permissions Whitelist -->
+<permissions>
+    <privapp-permissions package="org.fdroid.fdroid.privileged">
+        <permission name="android.permission.INSTALL_PACKAGES" />
+        <permission name="android.permission.DELETE_PACKAGES" />
+        <permission name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    </privapp-permissions>
+
+    <privapp-permissions package="com.aurora.store">
+        <permission name="android.permission.INSTALL_PACKAGES" />
+        <permission name="android.permission.DELETE_PACKAGES" />
+        <permission name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    </privapp-permissions>
+
+    <privapp-permissions package="com.zeroos.store">
+        <permission name="android.permission.INSTALL_PACKAGES" />
+        <permission name="android.permission.DELETE_PACKAGES" />
+        <permission name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+        <permission name="android.permission.MANAGE_USERS" />
+        <permission name="android.permission.PACKAGE_USAGE_STATS" />
+    </privapp-permissions>
+</permissions>
