@@ -233,7 +233,7 @@ fun ZeroChatScreen(
                         TextField(
                             value = inputText,
                             onValueChange = { inputText = it },
-                            placeholder = { Text("Message via Tor P2P...", fontSize = 14.sp, color = waSecondaryText) },
+                            placeholder = { Text("Message", fontSize = 14.sp, color = waSecondaryText) },
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color(0xFF2A3942),
                                 unfocusedContainerColor = Color(0xFF2A3942),

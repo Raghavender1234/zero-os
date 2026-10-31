@@ -316,26 +316,30 @@
     }
     .quick-chips-row::-webkit-scrollbar { display: none; }
     .quick-chip {
-      background: var(--oneui-card);
-      border: 1px solid var(--border-subtle);
-      color: #cbd5e1;
+      background: #171717;
+      border: 1px solid #262626;
+      color: #94a3b8;
       border-radius: 20px;
-      padding: 6px 12px;
-      font-size: 0.72rem;
+      padding: 6px 14px;
+      font-size: 0.75rem;
       white-space: nowrap;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 5px;
-      transition: all 0.15s ease;
+      gap: 6px;
+      font-weight: 500;
+      transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
     }
     .quick-chip:hover {
-      background: var(--oneui-tile);
-      color: #fff;
-      border-color: rgba(255, 255, 255, 0.2);
+      background: #242424;
+      color: #ffffff;
+      border-color: #383838;
     }
-    .quick-chip:active {
-      transform: scale(0.95);
+    .quick-chip.active {
+      background: #00a884 !important;
+      color: #000000 !important;
+      border-color: #00a884 !important;
+      font-weight: 700 !important;
     }
     .command-symbol {
       font-size: 1.1rem;
@@ -1427,18 +1431,18 @@
             <!-- Floating Ergonomic ZeroOS Command Center -->
             <div class="command-center-container">
               <div class="quick-chips-row">
-                <button class="quick-chip" onclick="fillDirectionCommand()" style="background:#005c4b; border:1px solid #00a884; color:#fff; font-weight:600;">📍 /direction</button>
-                <button class="quick-chip" onclick="quickRun('toggle wifi')">📶 Wi-Fi</button>
-                <button class="quick-chip" onclick="quickRun('toggle bluetooth')">ᛒ Bluetooth</button>
-                <button class="quick-chip" onclick="quickRun('cycle sound')">🔔 Sound</button>
-                <button class="quick-chip" onclick="quickRun('torch')">🔦 Torch</button>
-                <button class="quick-chip" onclick="quickRun('mute mic for social media')">🎙️ Mute Mic</button>
-                <button class="quick-chip" onclick="quickRun('battery report')">🔋 Battery</button>
+                <button class="quick-chip" id="chip-direction" onclick="fillDirectionCommand()">📍 /direction</button>
+                <button class="quick-chip" id="chip-wifi" onclick="quickRun('toggle wifi')">📶 Wi-Fi</button>
+                <button class="quick-chip" id="chip-bluetooth" onclick="quickRun('toggle bluetooth')">ᛒ Bluetooth</button>
+                <button class="quick-chip" id="chip-sound" onclick="quickRun('cycle sound')">🔔 Sound</button>
+                <button class="quick-chip" id="chip-torch" onclick="quickRun('torch')">🔦 Torch</button>
+                <button class="quick-chip" id="chip-mic" onclick="quickRun('mute mic for social media')">🎙️ Mute Mic</button>
+                <button class="quick-chip" id="chip-dia" onclick="quickRun('dia')">🔋 DIA Mode</button>
               </div>
 
               <div class="search-command-bar">
                 <span class="command-symbol">⌘</span>
-                <input type="text" id="androidSearchInput" class="search-input" placeholder="Type setting, command or app ('wifi off', 'brightness 60', 'waze')..." onkeydown="if(event.key==='Enter') executeSearchCommand()" />
+                <input type="text" id="androidSearchInput" class="search-input" placeholder="Search or command..."wifi off', 'brightness 60', 'waze')..." onkeydown="if(event.key==='Enter') executeSearchCommand()" />
                 <button class="btn-execute-cmd" onclick="executeSearchCommand()" title="Execute Command">↵</button>
               </div>
             </div>
@@ -1848,6 +1852,77 @@
     }
 
     function renderUI() {
+      // Sync Quick Chips (Solid color without glow / 0 battery waste)
+      const chipWifi = document.getElementById('chip-wifi');
+      if (chipWifi) {
+        if (state.is_wifi_on) {
+          chipWifi.classList.add('active');
+          chipWifi.innerText = '📶 Wi-Fi';
+        } else {
+          chipWifi.classList.remove('active');
+          chipWifi.innerText = '📶 Wi-Fi Off';
+        }
+      }
+
+      const chipBt = document.getElementById('chip-bluetooth');
+      if (chipBt) {
+        if (state.is_bluetooth_on) {
+          chipBt.classList.add('active');
+          chipBt.innerText = 'ᛒ Bluetooth';
+        } else {
+          chipBt.classList.remove('active');
+          chipBt.innerText = 'ᛒ Bluetooth Off';
+        }
+      }
+
+      const chipSound = document.getElementById('chip-sound');
+      if (chipSound) {
+        if (state.sound_mode === 'sound') {
+          chipSound.classList.add('active');
+          chipSound.innerText = '🔔 Sound';
+        } else if (state.sound_mode === 'vibrate') {
+          chipSound.classList.remove('active');
+          chipSound.innerText = '📳 Vibrate';
+        } else {
+          chipSound.classList.remove('active');
+          chipSound.innerText = '🔕 Silent';
+        }
+      }
+
+      const chipTorch = document.getElementById('chip-torch');
+      if (chipTorch) {
+        if (state.is_torch_on) {
+          chipTorch.classList.add('active');
+          chipTorch.innerText = '🔦 Torch On';
+        } else {
+          chipTorch.classList.remove('active');
+          chipTorch.innerText = '🔦 Torch';
+        }
+      }
+
+      const chipMic = document.getElementById('chip-mic');
+      if (chipMic) {
+        const anyMuted = state.is_mic_killed || Object.values(state.app_shields || {}).some(s => s.mic_muted);
+        if (anyMuted) {
+          chipMic.classList.add('active');
+          chipMic.innerText = '🎙️ Mic Muted';
+        } else {
+          chipMic.classList.remove('active');
+          chipMic.innerText = '🎙️ Mute Mic';
+        }
+      }
+
+      const chipDia = document.getElementById('chip-dia');
+      if (chipDia) {
+        if (state.is_dia_mode || state.is_nokia_mode) {
+          chipDia.classList.add('active');
+          chipDia.innerText = '🔋 DIA Active';
+        } else {
+          chipDia.classList.remove('active');
+          chipDia.innerText = '🔋 DIA Mode';
+        }
+      }
+
       // 1. Status Bar
       document.getElementById('statusTorch').style.display = state.is_torch_on ? 'inline-block' : 'none';
       document.getElementById('statusHotspot').style.display = state.is_hotspot_on ? 'inline-block' : 'none';
@@ -2127,7 +2202,7 @@
             <!-- Input Bar -->
             <div style="display:flex; gap:6px; align-items:center; background:#202c33; border-radius:24px; padding:4px 8px;">
               <span style="font-size:1.1rem; cursor:pointer; padding-left:4px;" onclick="toggleAttachmentSheet()" title="Share Media, Location, Contacts, Files">📎</span>
-              <input id="zerochatInput" type="text" placeholder="Message via Tor P2P..." style="flex:1; background:transparent; border:none; color:#fff; font-size:0.8rem; outline:none; padding:6px;" onkeydown="if(event.key==='Enter') sendZeroChatMessage()">
+              <input id="zerochatInput" type="text" placeholder="Message" style="flex:1; background:transparent; border:none; color:#fff; font-size:0.8rem; outline:none; padding:6px;" onkeydown="if(event.key==='Enter') sendZeroChatMessage()">
               <button onclick="sendZeroChatMessage()" style="width:34px; height:34px; border-radius:50%; background:#00a884; color:#000; border:none; font-size:0.9rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center;">
                 ➤
               </button>
@@ -2150,7 +2225,7 @@
               <span style="font-size:0.8rem; font-weight:600; color:#fff;">natgeo</span>
             </div>
             <div style="height:150px; background:#1b2332; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#64748b; font-size:0.8rem;">
-              [OLED Optimized Image Stream]
+              
             </div>
             <div style="font-size:0.75rem; color:#cbd5e1; margin-top:8px;">Glacier national park at dawn. Zero battery wasted.</div>
           </div>
@@ -2351,7 +2426,7 @@
 
               <!-- 2. CONTACTS TAB -->
               <div id="dialerViewContacts" style="display:none; flex-direction:column; gap:8px; overflow-y:auto; flex:1; padding-right:2px;">
-                <input type="text" placeholder="🔍 Search 182 contacts..." style="background:#171717; border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:8px 12px; color:#fff; font-size:0.8rem; margin-bottom:4px;" />
+                <input type="text" placeholder="Search contacts..." style="background:#171717; border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:8px 12px; color:#fff; font-size:0.8rem; margin-bottom:4px;" />
                 
                 <div style="font-size:0.7rem; color:#94a3b8; font-weight:700; margin-top:4px;">A</div>
                 <div style="padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.85rem; color:#fff; display:flex; justify-content:space-between; cursor:pointer;" onclick="startCall('Alex Rivera', '+1 (555) 345-6789')">
@@ -2576,7 +2651,7 @@
             </div>
 
             <div style="flex:1; background:#0b1017; border-radius:12px; margin:8px 0; border:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; align-items:center; justify-content:center;">
-              <div style="color:#475569; font-size:0.75rem;">[Offline Vector Navigation View]</div>
+              <div style="color:#475569; font-size:0.75rem;">Organic Maps Core · Vector View</div>
               <div style="font-size:0.68rem; color:#64748b; margin-top:4px;">GNSS Live Coordinates: 51.5074° N, 0.1278° W</div>
               <div style="margin-top:6px; display:inline-block; padding:3px 8px; border-radius:8px; font-size:0.65rem; background:${isNav ? '#10b981' : '#334155'}; color:${isNav ? '#000' : '#cbd5e1'}; font-weight:700;">
                 ${isNav ? 'ACTIVE TRIP NAVIGATION' : 'IDLE PREVIEW'}
