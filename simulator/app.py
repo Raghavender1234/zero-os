@@ -422,11 +422,19 @@ HTML_TEMPLATE = """
     }
     .quick-chips-row {
       display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 8px;
-      width: 100%;
+      flex-direction: row;
+      flex-wrap: nowrap !important;
+      gap: 8px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 4px 16px 8px 16px;
+      margin: 0 -16px 8px -16px;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+      width: calc(100% + 32px);
     }
+    .quick-chips-row::-webkit-scrollbar { display: none; }
     .quick-chip {
       flex-shrink: 0 !important;
       white-space: nowrap !important;
@@ -448,6 +456,12 @@ HTML_TEMPLATE = """
       background: #242424;
       color: #ffffff;
       border-color: #383838;
+    }
+    .quick-chip.chip-silent {
+      background: #242424 !important;
+      color: #f1f5f9 !important;
+      border-color: #404040 !important;
+      font-weight: 600 !important;
     }
     .quick-chip.chip-vibrate {
       background: #f59e0b !important;
@@ -1379,14 +1393,13 @@ HTML_TEMPLATE = """
             <div class="command-center-container">
               <div class="quick-chips-row">
                 <button class="quick-chip" id="chip-direction" onclick="fillDirectionCommand()">📍 /direction</button>
-                <button class="quick-chip" id="chip-wifi" onclick="quickRun('toggle wifi')">📶 Wi-Fi</button>
-                <button class="quick-chip" id="chip-bluetooth" onclick="quickRun('toggle bluetooth')">ᛒ Bluetooth</button>
-                <button class="quick-chip" id="chip-sound" onclick="quickRun('cycle sound')">🔔 Sound</button>
-                <button class="quick-chip" id="chip-torch" onclick="quickRun('torch')">🔦 Torch</button>
+                <button class="quick-chip" id="chip-wifi" onclick="toggleFeature('wifi')">📶 Wi-Fi</button>
+                <button class="quick-chip" id="chip-bluetooth" onclick="toggleFeature('bluetooth')">ᛒ Bluetooth</button>
+                <button class="quick-chip active" id="chip-sound" onclick="toggleFeature('sound')">🔔 Sound</button>
+                <button class="quick-chip" id="chip-torch" onclick="toggleFeature('torch')">🔦 Torch</button>
                 <button class="quick-chip" id="chip-mic" onclick="quickRun('mute mic for social media')">🎙️ Mute Mic</button>
-                <button class="quick-chip" id="chip-dia" onclick="quickRun('dia')">🔋 DIA Mode</button>
+                <button class="quick-chip" id="chip-dia" onclick="toggleFeature('dia')">🔋 DIA Mode</button>
               </div>
-
               <div class="search-command-bar">
                 <span class="command-symbol">⌘</span>
                 <input type="text" id="androidSearchInput" class="search-input" placeholder="Search or command..." onkeydown="if(event.key==='Enter') executeSearchCommand()" />
@@ -1824,14 +1837,16 @@ HTML_TEMPLATE = """
 
       const chipSound = document.getElementById('chip-sound');
       if (chipSound) {
-        chipSound.classList.remove('active', 'chip-vibrate');
-        if (state.sound_mode === 'sound') {
+        chipSound.classList.remove('active', 'chip-vibrate', 'chip-silent');
+        const mode = state.sound_mode || 'sound';
+        if (mode === 'sound') {
           chipSound.classList.add('active');
           chipSound.innerText = '🔔 Sound';
-        } else if (state.sound_mode === 'vibrate') {
+        } else if (mode === 'vibrate') {
           chipSound.classList.add('chip-vibrate');
           chipSound.innerText = '📳 Vibrate';
         } else {
+          chipSound.classList.add('chip-silent');
           chipSound.innerText = '🔕 Silent';
         }
       }
@@ -2698,6 +2713,16 @@ HTML_TEMPLATE = """
       renderUI();
     }
 
+        function fillDirectionCommand() {
+      const input = document.getElementById('androidSearchInput');
+      if (input) {
+        input.value = '/direction ';
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+        showToast('📍 Type destination and press ↵ (e.g. /direction Airport)');
+      }
+    }
+
     function executeSearchCommand() {
       const input = document.getElementById('androidSearchInput');
       const val = input.value.trim();
@@ -3048,7 +3073,11 @@ def process_command():
 
     # SOUND / VIBRATE / SILENT MODE
     if any(w in lower for w in ["sound", "vibrate", "silent", "ringer", "dnd"]):
-        if "silent" in lower or "mute" in lower or "dnd" in lower:
+        if "cycle" in lower or lower.strip() in ["sound", "toggle sound", "mode sound"]:
+            modes = ["sound", "vibrate", "silent"]
+            curr = STATE.get("sound_mode", "sound")
+            STATE["sound_mode"] = modes[(modes.index(curr) + 1) % len(modes)]
+        elif "silent" in lower or "mute" in lower or "dnd" in lower:
             STATE["sound_mode"] = "silent"
         elif "vibrate" in lower or "vib" in lower:
             STATE["sound_mode"] = "vibrate"
@@ -3059,7 +3088,9 @@ def process_command():
             curr = STATE.get("sound_mode", "sound")
             STATE["sound_mode"] = modes[(modes.index(curr) + 1) % len(modes)]
         STATE["kernel_logs"].append(f"[AudioService] Ringer mode changed to {STATE['sound_mode'].upper()}")
-        return jsonify({"success": True, "message": f"🔔 Sound mode: {STATE['sound_mode'].capitalize()}.", "state": STATE})
+        mode_cap = STATE['sound_mode'].capitalize()
+        icon = "🔔" if STATE['sound_mode'] == "sound" else ("📳" if STATE['sound_mode'] == "vibrate" else "🔕")
+        return jsonify({"success": True, "message": f"{icon} Sound mode: {mode_cap}.", "state": STATE})
 
     # BRIGHTNESS SLIDER / COMMAND
     if "brightness" in lower or ("light" in lower and any(c.isdigit() for c in lower)):
