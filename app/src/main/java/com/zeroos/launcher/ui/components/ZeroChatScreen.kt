@@ -87,7 +87,7 @@ fun ZeroChatScreen(
                 phoneNumber = "+1 555-0192",
                 onionAddress = "alex4k7p...onion",
                 isPaired = true,
-                lastMessage = "Sent the encrypted budget spreadsheet over Tor",
+                lastMessage = "Sent the budget spreadsheet",
                 lastMessageTime = "12:42 PM",
                 unreadCount = 2,
                 isOnline = true
@@ -124,7 +124,7 @@ fun ZeroChatScreen(
             ZeroChatMessage(
                 id = "m1",
                 sender = "Alex Rivera",
-                text = "Hey! Is this connection completely serverless?",
+                text = "Hey! Are you heading to the meeting now?",
                 timestamp = "12:38 PM",
                 isMe = false,
                 status = 3
@@ -132,7 +132,7 @@ fun ZeroChatScreen(
             ZeroChatMessage(
                 id = "m2",
                 sender = "Me",
-                text = "Yes 100%. We are communicating directly device-to-device over Tor v3 onion routing. No Meta, no Google, no servers exist.",
+                text = "Yes, just leaving now. See you in 15 mins.",
                 timestamp = "12:40 PM",
                 isMe = true,
                 status = 3
@@ -140,18 +140,18 @@ fun ZeroChatScreen(
             ZeroChatMessage(
                 id = "m3",
                 sender = "Alex Rivera",
-                text = "Here is the project proposal PDF. Streaming directly to your phone storage.",
+                text = "Here is the updated proposal.",
                 timestamp = "12:41 PM",
                 isMe = false,
                 status = 3,
                 attachmentType = "file",
-                attachmentName = "ZeroOS_Whitepaper_v1.pdf",
+                attachmentName = "Project_Proposal.pdf",
                 attachmentSize = "4.2 MB"
             ),
             ZeroChatMessage(
                 id = "m4",
                 sender = "Alex Rivera",
-                text = "Sent the encrypted budget spreadsheet over Tor",
+                text = "Sent the budget spreadsheet",
                 timestamp = "12:42 PM",
                 isMe = false,
                 status = 3
@@ -196,7 +196,7 @@ fun ZeroChatScreen(
                                         .padding(horizontal = 8.dp, vertical = 3.dp)
                                 ) {
                                     Text(
-                                        text = "🟢 Tor v3 • 0 Servers",
+                                        text = "Online",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = waAccentGreen,
@@ -220,7 +220,7 @@ fun ZeroChatScreen(
 
                         // Security Hero Info
                         Text(
-                            text = "Direct peer-to-peer messaging. No central server. No metadata logged.",
+                            text = "",
                             fontSize = 12.sp,
                             color = waSecondaryText
                         )
@@ -369,13 +369,13 @@ fun ZeroChatScreen(
                                 color = Color.White
                             )
                             Text(
-                                text = if (currentContact.isPaired) "online over Tor v3" else "Unpaired • Carrier SMS bootstrap ready",
+                                text = if (currentContact.isPaired) "online" else "offline",
                                 fontSize = 11.sp,
                                 color = if (currentContact.isPaired) waAccentGreen else Color(0xFFF59E0B)
                             )
                         }
 
-                        Text("🔒 P2P", fontSize = 12.sp, color = waSecondaryText, fontFamily = FontFamily.Monospace)
+                        Text("", fontSize = 12.sp, color = waSecondaryText, fontFamily = FontFamily.Monospace)
                     }
                 }
 
@@ -399,7 +399,7 @@ fun ZeroChatScreen(
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
-                                    text = "🔒 Messages and files are end-to-end encrypted directly device-to-device over Tor v3. No central servers exist.",
+                                    text = "🔒 Messages are end-to-end encrypted.",
                                     fontSize = 11.sp,
                                     color = Color(0xFFFFD279),
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -409,39 +409,7 @@ fun ZeroChatScreen(
                         }
                     }
 
-                    // Handshake card if unpaired
-                    if (!currentContact.isPaired) {
-                        item {
-                            Surface(
-                                color = Color(0xFF1E2830),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Text(
-                                        text = "⚡ 1-Time Silent SMS Handshake",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = "Send an invisible carrier SMS to exchange Tor v3 onion keys. Once paired, carrier SMS is never used again.",
-                                        fontSize = 12.sp,
-                                        color = waSecondaryText
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Button(
-                                        onClick = {
-                                            // Trigger silent carrier handshake
-                                        },
-                                        colors = ButtonDefaults.buttonColors(containerColor = waAccentGreen)
-                                    ) {
-                                        Text("🤝 Initiate 1-Time Handshake", color = Color.Black, fontWeight = FontWeight.Bold)
-                                    }
-                                }
+                    
                             }
                         }
                     }

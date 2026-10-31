@@ -114,35 +114,15 @@ fun ZeroMapsScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterAlignmentLine(Alignment.CenterHorizontally)) {
-                            Text("🗺️", fontSize = 48.sp)
-                            Spacer(modifier = Modifier.height(10.dp))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("📍", fontSize = 36.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "ZeroMaps · Organic Maps Core",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
+                                text = "Grand Avenue · Oxford Circus",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = Color.White
                             )
-                            Text(
-                                text = "100% Offline OpenStreetMap Vector Engine",
-                                fontSize = 12.sp,
-                                color = textSecondary
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            // Privacy Shield Pill
-                            Surface(
-                                color = Color(0xFF064E3B),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text(
-                                    text = "🛡️ 0 KB Cellular Data · 0 Cloud Tracking",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = accentGreen,
-                                    fontFamily = FontFamily.Monospace,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                )
-                            }
                         }
 
                         // Speed Limit Indicator (Bottom Left)

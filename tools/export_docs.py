@@ -162,6 +162,23 @@ def main():
         localState.calm_digest_items = [];
       } else if (url === '/api/command') {
         const cmd = (body.command || '').toLowerCase().trim();
+        if (cmd.startsWith('/direction') || cmd.startsWith('direction') || cmd.includes('maps')) {
+          localState.active_app = 'maps';
+          localState.is_maps_navigating = true;
+          localState.navigation = {
+            is_active: true,
+            destination: cmd.replace(/^[/]direction\s*/i, '').trim() || 'Grand Avenue',
+            eta_minutes: 14,
+            distance_km: 4.2
+          };
+          responseData = { success: true, message: '🗺️ Route calculated: Live GPS ➔ ' + (localState.navigation.destination) + ' (14 min, 4.2 km).', state: localState };
+          return new Response(JSON.stringify(responseData), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        } else if (cmd.includes('sound') || cmd.includes('vibrate') || cmd.includes('silent')) {
+          const modes = ['sound', 'vibrate', 'silent'];
+          localState.sound_mode = modes[(modes.indexOf(localState.sound_mode) + 1) % modes.length];
+          responseData = { success: true, message: '🔔 Sound mode: ' + localState.sound_mode, state: localState };
+          return new Response(JSON.stringify(responseData), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }
         let reply = "Command acknowledged.";
         if (cmd.includes('setup') || cmd.includes('wizard') || cmd.includes('oobe')) {
           localState.active_app = 'setup';

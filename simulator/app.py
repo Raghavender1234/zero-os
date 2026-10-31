@@ -422,31 +422,38 @@ HTML_TEMPLATE = """
     }
     .quick-chips-row {
       display: flex;
+      flex-wrap: wrap;
       gap: 6px;
-      overflow-x: auto;
-      padding-bottom: 8px;
-      scrollbar-width: none;
+      margin-bottom: 8px;
+      width: 100%;
     }
-    .quick-chips-row::-webkit-scrollbar { display: none; }
     .quick-chip {
+      flex-shrink: 0 !important;
+      white-space: nowrap !important;
       background: #171717;
       border: 1px solid #262626;
       color: #94a3b8;
       border-radius: 20px;
       padding: 6px 14px;
       font-size: 0.75rem;
-      white-space: nowrap;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
       font-weight: 500;
+      line-height: 1;
       transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
     }
     .quick-chip:hover {
       background: #242424;
       color: #ffffff;
       border-color: #383838;
+    }
+    .quick-chip.chip-vibrate {
+      background: #f59e0b !important;
+      color: #000000 !important;
+      border-color: #f59e0b !important;
+      font-weight: 700 !important;
     }
     .quick-chip.active {
       background: #00a884 !important;
@@ -1382,7 +1389,7 @@ HTML_TEMPLATE = """
 
               <div class="search-command-bar">
                 <span class="command-symbol">⌘</span>
-                <input type="text" id="androidSearchInput" class="search-input" placeholder="Search or command..."wifi off', 'brightness 60', 'waze')..." onkeydown="if(event.key==='Enter') executeSearchCommand()" />
+                <input type="text" id="androidSearchInput" class="search-input" placeholder="Search or command..." onkeydown="if(event.key==='Enter') executeSearchCommand()" />
                 <button class="btn-execute-cmd" onclick="executeSearchCommand()" title="Execute Command">↵</button>
               </div>
             </div>
@@ -1817,14 +1824,14 @@ HTML_TEMPLATE = """
 
       const chipSound = document.getElementById('chip-sound');
       if (chipSound) {
+        chipSound.classList.remove('active', 'chip-vibrate');
         if (state.sound_mode === 'sound') {
           chipSound.classList.add('active');
           chipSound.innerText = '🔔 Sound';
         } else if (state.sound_mode === 'vibrate') {
-          chipSound.classList.remove('active');
+          chipSound.classList.add('chip-vibrate');
           chipSound.innerText = '📳 Vibrate';
         } else {
-          chipSound.classList.remove('active');
           chipSound.innerText = '🔕 Silent';
         }
       }
@@ -2020,7 +2027,7 @@ HTML_TEMPLATE = """
       const headerIcon = document.getElementById('appHeaderIcon');
       headerIcon.innerHTML = OFFICIAL_ICONS[appKey] || '';
       
-      const appName = appKey.charAt(0).toUpperCase() + appKey.slice(1);
+      const appNames = { zerochat: 'ZeroChat', maps: 'ZeroMaps' }; const appName = appNames[appKey] || (appKey.charAt(0).toUpperCase() + appKey.slice(1));
       document.getElementById('appHeaderTitle').innerText = appName;
 
       const badge = document.getElementById('appHeaderBadge');
@@ -2040,6 +2047,12 @@ HTML_TEMPLATE = """
       } else if (isEphemeral) {
         badge.className = 'badge-ephemeral';
         badge.innerText = '🛡️ EPHEMERAL RAM';
+      } else if (appKey === 'zerochat') {
+        badge.className = 'badge-normal-airgap';
+        badge.innerText = 'END-TO-END ENCRYPTED';
+      } else if (appKey === 'maps') {
+        badge.className = 'badge-normal-airgap';
+        badge.innerText = 'OFFLINE NAVIGATION';
       } else {
         badge.className = 'badge-normal-airgap';
         badge.innerText = 'AIR-GAP PROTECTED';
@@ -2049,32 +2062,20 @@ HTML_TEMPLATE = """
       if (appKey === 'zerochat') {
         body.innerHTML = `
           <div style="background:#0b141a; min-height:100%; display:flex; flex-direction:column; margin:-16px; padding:12px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-            <!-- P2P Peer Network Header Pill -->
-            <div style="background:#182229; border:1px solid #22323c; border-radius:10px; padding:8px 12px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:1rem;">🧅</span>
-                <div>
-                  <div style="font-size:0.75rem; font-weight:700; color:#00a884;">TOR v3 PEER-TO-PEER</div>
-                  <div style="font-size:0.65rem; color:#8696a0;">0 Central Servers · Direct Phone-to-Phone</div>
-                </div>
-              </div>
-              <span style="font-size:0.65rem; background:#005c4b; color:#fff; padding:2px 8px; border-radius:12px; font-weight:600;">ENCRYPTED</span>
-            </div>
-
-            <!-- E2E Security Banner -->
-            <div style="background:#182229; border-radius:8px; padding:8px 10px; margin-bottom:12px; text-align:center;">
-              <span style="font-size:0.7rem; color:#ffd279; line-height:1.4;">🔒 Messages and files are end-to-end encrypted directly device-to-device over Tor v3 onion circuits. No Meta, Google, or cloud servers exist.</span>
+            <!-- Subtle WhatsApp Security Notice -->
+            <div style="background:#182229; border-radius:8px; padding:6px 12px; margin-bottom:12px; text-align:center; max-width:280px; align-self:center;">
+              <span style="font-size:0.7rem; color:#ffd279;">🔒 Messages are end-to-end encrypted</span>
             </div>
 
             <!-- Active Chat Thread: Alex Rivera -->
-            <div id="zerochatMessages" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:12px; max-height:280px; padding-right:4px;">
+            <div id="zerochatMessages" style="flex:1; overflow-y:auto; scrollbar-width:none;  display:flex; flex-direction:column; gap:8px; margin-bottom:12px; max-height:300px; padding-right:4px;">
               <div class="chat-bubble left" style="background:#202c33; color:#e9edef; border-radius:12px 12px 12px 2px; padding:8px 12px; max-width:85%; align-self:flex-start; font-size:0.8rem; box-shadow:0 1px 2px rgba(0,0,0,0.3);">
-                Hey! Is this connection completely serverless?
+                Hey! Are you heading to the meeting now?
                 <div style="font-size:0.65rem; color:#8696a0; text-align:right; margin-top:4px;">12:38 PM</div>
               </div>
 
               <div class="chat-bubble right" style="background:#005c4b; color:#e9edef; border-radius:12px 12px 2px 12px; padding:8px 12px; max-width:85%; align-self:flex-end; font-size:0.8rem; box-shadow:0 1px 2px rgba(0,0,0,0.3);">
-                Yes 100%. We are communicating directly device-to-device over Tor v3 onion routing. No central database exists.
+                Yes, just leaving now. See you in 15 mins.
                 <div style="font-size:0.65rem; color:#8696a0; text-align:right; margin-top:4px;">12:40 PM <span style="color:#53bdeb; font-weight:bold;">✓✓</span></div>
               </div>
 
@@ -2083,32 +2084,18 @@ HTML_TEMPLATE = """
                 <div style="background:#111b21; border-radius:6px; padding:8px; margin-bottom:6px; display:flex; align-items:center; gap:8px;">
                   <span style="font-size:1.4rem;">📄</span>
                   <div>
-                    <div style="font-size:0.75rem; font-weight:600; color:#fff;">ZeroOS_Whitepaper_v1.pdf</div>
-                    <div style="font-size:0.65rem; color:#8696a0;">4.2 MB · Direct Tor P2P Stream</div>
+                    <div style="font-size:0.75rem; font-weight:600; color:#fff;">Project_Proposal.pdf</div>
+                    <div style="font-size:0.65rem; color:#8696a0;">4.2 MB · PDF</div>
                   </div>
                 </div>
-                Here is the architectural whitepaper streamed to your phone storage.
+                Here is the updated proposal.
                 <div style="font-size:0.65rem; color:#8696a0; text-align:right; margin-top:4px;">12:41 PM</div>
               </div>
 
               <div class="chat-bubble right" style="background:#005c4b; color:#e9edef; border-radius:12px 12px 2px 12px; padding:8px 12px; max-width:85%; align-self:flex-end; font-size:0.8rem; box-shadow:0 1px 2px rgba(0,0,0,0.3);">
-                Received and verified SHA256 integrity digest!
+                Looks great, reviewing on the way!
                 <div style="font-size:0.65rem; color:#8696a0; text-align:right; margin-top:4px;">12:42 PM <span style="color:#53bdeb; font-weight:bold;">✓✓</span></div>
               </div>
-            </div>
-
-            <!-- 1-Time Silent SMS Handshake Card (For Unpaired Contacts) -->
-            <div id="handshakeCard" style="background:#182229; border:1px solid #334e5e; border-radius:10px; padding:10px; margin-bottom:12px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <span style="font-size:0.75rem; font-weight:700; color:#fff;">⚡ 1-Time Carrier Handshake</span>
-                <span style="font-size:0.65rem; color:#f59e0b; font-weight:bold;">1 UNPAIRED CONTACT</span>
-              </div>
-              <div style="font-size:0.7rem; color:#8696a0; margin-bottom:8px;">
-                Pair with <strong>David Kumar (+91 98765-43210)</strong> via an invisible background carrier SMS. Once exchanged, carrier SMS is never used again.
-              </div>
-              <button onclick="triggerSilentHandshake()" style="width:100%; background:#00a884; color:#000; border:none; padding:8px; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer;">
-                🤝 Initiate 1-Time Silent Handshake
-              </button>
             </div>
 
             <!-- WhatsApp 6-Icon Attachment Sheet (Popup) -->
@@ -2141,14 +2128,13 @@ HTML_TEMPLATE = """
 
             <!-- Input Bar -->
             <div style="display:flex; gap:6px; align-items:center; background:#202c33; border-radius:24px; padding:4px 8px;">
-              <span style="font-size:1.1rem; cursor:pointer; padding-left:4px;" onclick="toggleAttachmentSheet()" title="Share Media, Location, Contacts, Files">📎</span>
+              <span style="font-size:1.1rem; cursor:pointer; padding-left:4px;" onclick="toggleAttachmentSheet()">📎</span>
               <input id="zerochatInput" type="text" placeholder="Message" style="flex:1; background:transparent; border:none; color:#fff; font-size:0.8rem; outline:none; padding:6px;" onkeydown="if(event.key==='Enter') sendZeroChatMessage()">
               <button onclick="sendZeroChatMessage()" style="width:34px; height:34px; border-radius:50%; background:#00a884; color:#000; border:none; font-size:0.9rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center;">
                 ➤
               </button>
             </div>
-          </div>
-        `;
+          </div>`;
       } else if (appKey === 'whatsapp') {
         body.innerHTML = `
           <div style="font-size:0.75rem; color:#94a3b8; text-align:center; margin-bottom:12px;">🔒 End-to-end encrypted · Decoupled Push</div>
@@ -2571,37 +2557,70 @@ HTML_TEMPLATE = """
             </div>
           </div>
         `;
-      } else if (appKey === 'maps') {
-        const isNav = state.is_maps_navigating;
+      } else if (appKey === 'maps' || appKey === 'zeromaps') {
+        const nav = state.navigation || {};
+        const dest = nav.destination || 'Grand Avenue';
+        const eta = nav.eta_minutes || 14;
+        const dist = nav.distance_km || 4.2;
+
         body.innerHTML = `
-          <div style="display:flex; flex-direction:column; width:100%; height:100%; justify-content:space-between;">
-            
-            <div style="background:#141b26; border-radius:14px; padding:12px; border:1px solid rgba(255,255,255,0.06);">
+          <div style="display:flex; flex-direction:column; width:100%; height:100%; justify-content:space-between; background:#0b141a; margin:-16px; padding:12px;">
+            <!-- Turn Maneuver Card -->
+            <div style="background:#005c4b; border-radius:12px; padding:12px; box-shadow:0 2px 8px rgba(0,0,0,0.3);">
               <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:34px; height:34px; border-radius:50%; background:#3b82f6; display:flex; align-items:center; justify-content:center; font-size:1.1rem; font-weight:bold; color:#fff;">↱</div>
+                <div style="width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:1.3rem; font-weight:bold; color:#fff;">↱</div>
                 <div>
-                  <div style="font-size:0.9rem; font-weight:700; color:#fff;">Turn right on Grand Ave</div>
-                  <div style="font-size:0.72rem; color:#94a3b8;">In 250 meters · Then keep left</div>
+                  <div style="font-size:0.95rem; font-weight:700; color:#fff;">In 200m turn right</div>
+                  <div style="font-size:0.75rem; color:#d1fae5;">onto ${dest}</div>
                 </div>
               </div>
-              <div style="margin-top:10px; display:flex; justify-content:space-between; font-size:0.78rem; border-top:1px solid #1f2937; padding-top:6px;">
-                <span style="color:#34d399; font-weight:700;">12 min</span>
-                <span style="color:#94a3b8;">4.8 km · 14:48 arrival</span>
+            </div>
+
+            <!-- Authentic Vector Map Display -->
+            <div style="flex:1; background:#121820; border-radius:12px; margin:8px 0; border:1px solid #1e293b; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+              <svg width="100%" height="100%" viewBox="0 0 300 160" style="position:absolute; top:0; left:0;">
+                <!-- Dark street network -->
+                <line x1="0" y1="120" x2="300" y2="120" stroke="#1e293b" stroke-width="14" />
+                <line x1="160" y1="0" x2="160" y2="160" stroke="#1e293b" stroke-width="14" />
+                <line x1="0" y1="40" x2="300" y2="40" stroke="#1e293b" stroke-width="8" />
+                <line x1="70" y1="0" x2="70" y2="160" stroke="#1e293b" stroke-width="8" />
+
+                <!-- Route line (Bright Emerald) -->
+                <path d="M 70 140 L 70 120 Q 70 120 90 120 L 160 120 L 160 50" fill="none" stroke="#00a884" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+
+                <!-- User Location Arrow -->
+                <polygon points="65,145 75,145 70,132" fill="#38bdf8" />
+
+                <!-- Destination Pin -->
+                <circle cx="160" cy="50" r="5" fill="#ef4444" />
+                <circle cx="160" cy="50" r="10" fill="none" stroke="#ef4444" stroke-width="2" opacity="0.6" />
+
+                <!-- Street labels -->
+                <text x="80" y="112" fill="#94a3b8" font-size="8" font-family="sans-serif">Grand Avenue</text>
+                <text x="170" y="70" fill="#94a3b8" font-size="8" font-family="sans-serif">Oxford Circus</text>
+              </svg>
+
+              <!-- Speed limit indicator -->
+              <div style="position:absolute; bottom:10px; left:10px; width:34px; height:34px; border-radius:50%; background:#fff; border:3px solid #dc2626; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.5);">
+                <span style="font-size:0.45rem; font-weight:bold; color:#000; line-height:1;">LIMIT</span>
+                <span style="font-size:0.7rem; font-weight:900; color:#000; line-height:1;">45</span>
               </div>
             </div>
 
-            <div style="flex:1; background:#0b1017; border-radius:12px; margin:8px 0; border:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; align-items:center; justify-content:center;">
-              <div style="color:#475569; font-size:0.75rem;">Organic Maps Core · Vector View</div>
-              <div style="font-size:0.68rem; color:#64748b; margin-top:4px;">GNSS Live Coordinates: 51.5074° N, 0.1278° W</div>
-              <div style="margin-top:6px; display:inline-block; padding:3px 8px; border-radius:8px; font-size:0.65rem; background:${isNav ? '#10b981' : '#334155'}; color:${isNav ? '#000' : '#cbd5e1'}; font-weight:700;">
-                ${isNav ? 'ACTIVE TRIP NAVIGATION' : 'IDLE PREVIEW'}
+            <!-- Route ETA & Controls -->
+            <div style="background:#1f2c34; border-radius:12px; padding:12px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-size:1.25rem; font-weight:700; color:#00a884;">${eta} <span style="font-size:0.8rem; font-weight:normal; color:#8696a0;">min</span></div>
+                <div style="font-size:0.72rem; color:#8696a0;">${dist} km · 14:48 arrival</div>
               </div>
-            </div>
-
-            <div>
-              <button style="width:100%; background:${isNav ? '#ef4444' : '#3b82f6'}; color:#fff; border:none; padding:11px; border-radius:12px; font-size:0.82rem; font-weight:700; cursor:pointer;" onclick="toggleTripNavigation()">
-                ${isNav ? '🛑 End Navigation Trip' : '🧭 Start Turn-by-Turn Route'}
-              </button>
+              <div style="display:flex; gap:8px;">
+                <button onclick="showToast('🔊 Voice guidance active');" style="background:#2a3942; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-size:0.75rem; cursor:pointer;">
+                  🔊 Voice
+                </button>
+                <button onclick="toggleTripNavigation()" style="background:#dc2626; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-size:0.75rem; font-weight:600; cursor:pointer;">
+                  End Route
+                </button>
+              </div>
             </div>
           </div>
         `;
@@ -2969,13 +2988,13 @@ def process_command():
             "eta_minutes": 18,
             "distance_km": 6.8,
             "next_maneuver": f"In 250m turn right onto Grand Ave towards {dest}",
-            "traffic_notice": "Offline Vector Route (OpenStreetMap) · Live traffic unavailable in offline mode"
+            "traffic_notice": "Offline Vector Route"
         }
         STATE["kernel_logs"].append(f"[ZeroMaps] Offline route generated: {origin} -> {dest} (6.8 km, 18 min).")
         STATE["kernel_logs"].append("[ZeroMaps] Live traffic congestion data unavailable (0 cloud tracking servers).")
         return jsonify({
             "success": True,
-            "message": f"🗺️ Route calculated: {origin} ➔ {dest} (18 min, 6.8 km). Live traffic unavailable in offline mode.",
+            "message": f"🗺️ Route calculated: {origin} ➔ {dest} (18 min, 6.8 km).",
             "state": STATE
         })
 
@@ -2983,13 +3002,13 @@ def process_command():
     if any(w in lower for w in ["zeromaps", "maps", "navigation", "navigate", "directions", "turn by turn", "gps"]):
         STATE["active_app"] = "maps"
         STATE["kernel_logs"].append("[ZeroMaps] Offline OpenStreetMap engine loaded. GNSS fix acquired (0 cloud requests).")
-        return jsonify({"success": True, "message": "🗺️ Opened ZeroMaps (100% Offline Vector Navigation).", "state": STATE})
+        return jsonify({"success": True, "message": "🗺️ Opened ZeroMaps.", "state": STATE})
 
     # ZEROCHAT P2P MESSAGING COMMANDS
     if any(w in lower for w in ["zerochat", "p2p chat", "tor chat", "peer to peer"]) or (("chat" in lower or "message" in lower) and not "sms" in lower and not "delete" in lower):
         STATE["active_app"] = "zerochat"
         STATE["kernel_logs"].append("[ZeroMesh] ZeroChat invoked. Tor v3 onion listening socket active (0 servers).")
-        return jsonify({"success": True, "message": "💬 Opened ZeroChat (100% Peer-to-Peer over Tor v3).", "state": STATE})
+        return jsonify({"success": True, "message": "💬 Opened ZeroChat.", "state": STATE})
 
     if "handshake" in lower:
         STATE["active_app"] = "zerochat"
