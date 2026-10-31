@@ -1456,7 +1456,7 @@ HTML_TEMPLATE = """
 
               <div class="app-icon-item" onclick="launchForegroundApp('maps')">
                 <div class="app-icon-shape" id="icon-maps"></div>
-                <div class="app-label">Maps</div>
+                <div class="app-label" style="color:#00a884; font-weight:600;">ZeroMaps</div>
               </div>
 
               <div class="app-icon-item" onclick="launchForegroundApp('settings')">
@@ -2868,7 +2868,13 @@ def process_command():
     raw_cmd = data.get("command", "").strip()
     lower = raw_cmd.lower()
 
-        # ZEROCHAT P2P MESSAGING COMMANDS
+            # ZEROMAPS OFFLINE NAVIGATION
+    if any(w in lower for w in ["zeromaps", "maps", "navigation", "navigate", "directions", "turn by turn", "gps"]):
+        STATE["active_app"] = "maps"
+        STATE["kernel_logs"].append("[ZeroMaps] Offline OpenStreetMap engine loaded. GNSS fix acquired (0 cloud requests).")
+        return jsonify({"success": True, "message": "🗺️ Opened ZeroMaps (100% Offline Vector Navigation).", "state": STATE})
+
+    # ZEROCHAT P2P MESSAGING COMMANDS
     if any(w in lower for w in ["zerochat", "p2p chat", "tor chat", "peer to peer"]) or (("chat" in lower or "message" in lower) and not "sms" in lower and not "delete" in lower):
         STATE["active_app"] = "zerochat"
         STATE["kernel_logs"].append("[ZeroMesh] ZeroChat invoked. Tor v3 onion listening socket active (0 servers).")
