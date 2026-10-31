@@ -68,6 +68,15 @@ Modeled after desktop browsers ("Allow this time only"):
 * **Android Auto:** Bundled `/system/priv-app/` projection bridge routes H.264 display to car head units while keeping app telemetry firewalled.
 * **Sandboxed Google Account Sync:** Sign into `@gmail.com` to sync Contacts and Calendar on-demand, without Google's background advertising daemons draining battery 24/7.
 
+
+### 6. 💬 ZeroChat: 100% Peer-to-Peer Serverless Tor v3 Messenger
+Privacy apps like Briar suffer severe notification delays on commercial Android because Google's Doze mode aggressively throttles background sockets for apps from the Play Store.
+* **Native AOSP System Integration (`ZeroMeshService.java` & `ZeroMeshManager.java`):** ZeroOS embeds the Tor v3 daemon directly into the OS framework with ultra-low-power epoll kernel sockets—delivering **instant 0-second messages without battery drain**.
+* **Zero Central Servers:** No Meta, no Google, no cloud databases exist. All chats, voice notes, photos, and files stream directly phone-to-phone.
+* **1-Time Silent Carrier SMS Handshake:** Automatically pairs with existing contacts in your address book via an invisible, encrypted 1-time carrier SMS (`//0M:KEY:`). Once keys are exchanged, carrier SMS is never used again.
+* **Decentralized Tor DHT for @Usernames:** Discover and connect with users worldwide without sharing your phone number.
+* **WhatsApp-Grade UX:** Authentic dark theme (`#0b141a`), emerald green sent bubbles (`#005c4b`), double checkmarks (`✓` -> `✓✓` blue), voice notes, and direct P2P file streaming.
+
 ---
 
 ## 📊 Empirical Battery Benchmarks

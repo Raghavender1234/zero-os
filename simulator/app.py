@@ -1404,6 +1404,15 @@ HTML_TEMPLATE = """
                 <div class="app-label">Camera</div>
               </div>
 
+              <!-- ZeroChat: Native Peer-to-Peer Encrypted Tor Messenger -->
+              <div class="app-icon-item" onclick="launchForegroundApp('zerochat')">
+                <div class="app-icon-shape" id="icon-zerochat" style="background:#005c4b; border:1px solid #00a884;">
+                  <span style="font-size:1.4rem;">💬</span>
+                  <span class="shield-badge-dot" style="display:block; background:#00a884; box-shadow:0 0 6px #00a884;">🧅</span>
+                </div>
+                <div class="app-label" style="color:#00a884; font-weight:600;">ZeroChat</div>
+              </div>
+
               <!-- Mainstream Apps with Automatic Air-Gap Protection -->
               <div class="app-icon-item" onclick="launchForegroundApp('whatsapp')">
                 <div class="app-icon-shape" id="icon-whatsapp">
@@ -1619,6 +1628,8 @@ HTML_TEMPLATE = """
   <script>
     // OFFICIAL BRAND SVG ASSETS
     const OFFICIAL_ICONS = {
+      zerochat: `<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="#00A884"/><path fill="#FFF" d="M24 10c-7.7 0-14 5.8-14 13 0 2.6.9 5.1 2.5 7.1L11 36l6.3-1.6c2.1 1 4.3 1.6 6.7 1.6 7.7 0 14-5.8 14-13s-6.3-13-14-13zm0 22c-2 0-3.9-.5-5.6-1.5l-.4-.2-3.7 1 1-3.6-.3-.4c-1.3-1.8-2-3.9-2-6.3 0-5.5 4.9-10 11-10s11 4.5 11 10-4.9 10-11 10z"/><circle cx="19" cy="22" r="2" fill="#FFF"/><circle cx="29" cy="22" r="2" fill="#FFF"/></svg>`,
+
       phone: `<svg viewBox="0 0 48 48"><path fill="#34A853" d="M11.2 5.5l5.2-1c1.2-.2 2.4.5 2.8 1.6l2.4 5.6c.4 1 .1 2.2-.7 2.9l-3.2 3.2c2.4 4.8 6.4 8.7 11.2 11.2l3.2-3.2c.7-.7 1.9-1 2.9-.7l5.6 2.4c1.1.5 1.8 1.6 1.6 2.8l-1 5.2c-.3 1.3-1.4 2.3-2.7 2.3C21 38 10 27 10 7.7c0-1.3 1-2.4 2.3-2.7l-1.1.5z"/></svg>`,
       messages: `<svg viewBox="0 0 48 48"><path fill="#1A73E8" d="M40 8H8c-2.2 0-4 1.8-4 4v28l8-8h28c2.2 0 4-1.8 4-4V12c0-2.2-1.8-4-4-4z"/><circle cx="16" cy="22" r="2.5" fill="#FFF"/><circle cx="24" cy="22" r="2.5" fill="#FFF"/><circle cx="32" cy="22" r="2.5" fill="#FFF"/></svg>`,
       chrome: `<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="19" fill="none"/><path fill="#EA4335" d="M24 4c8.4 0 15.6 5.2 18.5 12.6H24v7.4h-7.7L9.5 12.2C13.2 7.2 18.2 4 24 4z"/><path fill="#FBBC05" d="M9.5 12.2l6.8 11.8H8.5c-2.8 0-4.5-2.2-4.5-5 0-2.4 1-4.7 2.6-6.6l2.9-2.2z"/><path fill="#34A853" d="M16.3 24l-6.8 11.8C6.3 32.5 4 28.5 4 24c0-2.8 1.1-5.3 2.9-7.2l9.4 7.2z"/><path fill="#FBBC04" d="M24 44c-7.3 0-13.8-4-17.2-10l6.8-11.8 7.6 13.2L24 44z"/><path fill="#34A853" d="M42.5 16.6C43.5 18.9 44 21.4 44 24c0 11-9 20-20 20l7.2-12.4 8.7-2.6 2.6-12.4z"/><circle cx="24" cy="24" r="9" fill="#FFF"/><circle cx="24" cy="24" r="7.2" fill="#1A73E8"/></svg>`,
@@ -1958,7 +1969,82 @@ HTML_TEMPLATE = """
       }
 
       const body = document.getElementById('appWindowBody');
-      if (appKey === 'whatsapp') {
+      if (appKey === 'zerochat') {
+        body.innerHTML = `
+          <div style="background:#0b141a; min-height:100%; display:flex; flex-direction:column; margin:-16px; padding:12px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <!-- P2P Peer Network Header Pill -->
+            <div style="background:#182229; border:1px solid #22323c; border-radius:10px; padding:8px 12px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1rem;">🧅</span>
+                <div>
+                  <div style="font-size:0.75rem; font-weight:700; color:#00a884;">TOR v3 PEER-TO-PEER</div>
+                  <div style="font-size:0.65rem; color:#8696a0;">0 Central Servers · Direct Phone-to-Phone</div>
+                </div>
+              </div>
+              <span style="font-size:0.65rem; background:#005c4b; color:#fff; padding:2px 8px; border-radius:12px; font-weight:600;">ENCRYPTED</span>
+            </div>
+
+            <!-- E2E Security Banner -->
+            <div style="background:#182229; border-radius:8px; padding:8px 10px; margin-bottom:12px; text-align:center;">
+              <span style="font-size:0.7rem; color:#ffd279; line-height:1.4;">🔒 Messages and files are end-to-end encrypted directly device-to-device over Tor v3 onion circuits. No Meta, Google, or cloud servers exist.</span>
+            </div>
+
+            <!-- Active Chat Thread: Alex Rivera -->
+            <div id="zerochatMessages" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:12px; max-height:280px; padding-right:4px;">
+              <div class="chat-bubble left" style="background:#202c33; color:#e9edef; border-radius:12px 12px 12px 2px; padding:8px 12px; max-width:85%; align-self:flex-start; font-size:0.8rem; box-shadow:0 1px 2px rgba(0,0,0,0.3);">
+                Hey! Is this connection completely serverless?
+                <div style="font-size:0.65rem; color:#8696a0; text-align:right; margin-top:4px;">12:38 PM</div>
+              </div>
+
+              <div class="chat-bubble right" style="background:#005c4b; color:#e9edef; border-radius:12px 12px 2px 12px; padding:8px 12px; max-width:85%; align-self:flex-end; font-size:0.8rem; box-shadow:0 1px 2px rgba(0,0,0,0.3);">
+                Yes 100%. We are communicating directly device-to-device over Tor v3 onion routing. No central database exists.
+                <div style="font-size:0.65rem; color:#8696a0; text-align:right; margin-top:4px;">12:40 PM <span style="color:#53bdeb; font-weight:bold;">✓✓</span></div>
+              </div>
+
+              <!-- File Attachment Card -->
+              <div class="chat-bubble left" style="background:#202c33; color:#e9edef; border-radius:12px 12px 12px 2px; padding:8px 12px; max-width:85%; align-self:flex-start; font-size:0.8rem; box-shadow:0 1px 2px rgba(0,0,0,0.3);">
+                <div style="background:#111b21; border-radius:6px; padding:8px; margin-bottom:6px; display:flex; align-items:center; gap:8px;">
+                  <span style="font-size:1.4rem;">📄</span>
+                  <div>
+                    <div style="font-size:0.75rem; font-weight:600; color:#fff;">ZeroOS_Whitepaper_v1.pdf</div>
+                    <div style="font-size:0.65rem; color:#8696a0;">4.2 MB · Direct Tor P2P Stream</div>
+                  </div>
+                </div>
+                Here is the architectural whitepaper streamed to your phone storage.
+                <div style="font-size:0.65rem; color:#8696a0; text-align:right; margin-top:4px;">12:41 PM</div>
+              </div>
+
+              <div class="chat-bubble right" style="background:#005c4b; color:#e9edef; border-radius:12px 12px 2px 12px; padding:8px 12px; max-width:85%; align-self:flex-end; font-size:0.8rem; box-shadow:0 1px 2px rgba(0,0,0,0.3);">
+                Received and verified SHA256 integrity digest!
+                <div style="font-size:0.65rem; color:#8696a0; text-align:right; margin-top:4px;">12:42 PM <span style="color:#53bdeb; font-weight:bold;">✓✓</span></div>
+              </div>
+            </div>
+
+            <!-- 1-Time Silent SMS Handshake Card (For Unpaired Contacts) -->
+            <div id="handshakeCard" style="background:#182229; border:1px solid #334e5e; border-radius:10px; padding:10px; margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:0.75rem; font-weight:700; color:#fff;">⚡ 1-Time Carrier Handshake</span>
+                <span style="font-size:0.65rem; color:#f59e0b; font-weight:bold;">1 UNPAIRED CONTACT</span>
+              </div>
+              <div style="font-size:0.7rem; color:#8696a0; margin-bottom:8px;">
+                Pair with <strong>David Kumar (+91 98765-43210)</strong> via an invisible background carrier SMS. Once exchanged, carrier SMS is never used again.
+              </div>
+              <button onclick="triggerSilentHandshake()" style="width:100%; background:#00a884; color:#000; border:none; padding:8px; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer;">
+                🤝 Initiate 1-Time Silent Handshake
+              </button>
+            </div>
+
+            <!-- Input Bar -->
+            <div style="display:flex; gap:6px; align-items:center; background:#202c33; border-radius:24px; padding:4px 8px;">
+              <span style="font-size:1.1rem; cursor:pointer; padding-left:4px;" onclick="attachFileP2P()">📎</span>
+              <input id="zerochatInput" type="text" placeholder="Message via Tor P2P..." style="flex:1; background:transparent; border:none; color:#fff; font-size:0.8rem; outline:none; padding:6px;" onkeydown="if(event.key==='Enter') sendZeroChatMessage()">
+              <button onclick="sendZeroChatMessage()" style="width:34px; height:34px; border-radius:50%; background:#00a884; color:#000; border:none; font-size:0.9rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                ➤
+              </button>
+            </div>
+          </div>
+        `;
+      } else if (appKey === 'whatsapp') {
         body.innerHTML = `
           <div style="font-size:0.75rem; color:#94a3b8; text-align:center; margin-bottom:12px;">🔒 End-to-end encrypted · Decoupled Push</div>
           <div class="chat-bubble left">Hey! Are you free for coffee this afternoon?</div>
@@ -2753,6 +2839,18 @@ def process_command():
     data = request.get_json(silent=True) or {}
     raw_cmd = data.get("command", "").strip()
     lower = raw_cmd.lower()
+
+        # ZEROCHAT P2P MESSAGING COMMANDS
+    if any(w in lower for w in ["zerochat", "p2p chat", "tor chat", "peer to peer"]) or (("chat" in lower or "message" in lower) and not "sms" in lower and not "delete" in lower):
+        STATE["active_app"] = "zerochat"
+        STATE["kernel_logs"].append("[ZeroMesh] ZeroChat invoked. Tor v3 onion listening socket active (0 servers).")
+        return jsonify({"success": True, "message": "💬 Opened ZeroChat (100% Peer-to-Peer over Tor v3).", "state": STATE})
+
+    if "handshake" in lower:
+        STATE["active_app"] = "zerochat"
+        STATE["kernel_logs"].append("[ZeroMesh] 1-Time Silent Carrier SMS dispatched to peer contact.")
+        STATE["kernel_logs"].append("[ZeroMesh] Peer responded with Tor onion key: ed25519_pk_0x8f4a... PAIRING COMPLETE.")
+        return jsonify({"success": True, "message": "🤝 1-Time Silent SMS Handshake SUCCESS! Contact is now paired over Tor v3.", "state": STATE})
 
     # FIRST-BOOT SETUP WIZARD (OOBE)
     if "setup" in lower or "oobe" in lower or "wizard" in lower:
