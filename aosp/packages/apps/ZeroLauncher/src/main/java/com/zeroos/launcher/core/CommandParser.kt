@@ -11,6 +11,7 @@ sealed class ZeroCommand {
     data class RequestGrayscale(val explicitEnable: Boolean? = null) : ZeroCommand()
     data class RequestReboot(val immediate: Boolean = false) : ZeroCommand()
     data class RequestDiaMode(val explicitEnable: Boolean? = null) : ZeroCommand()
+    data class RequestDirections(val origin: String?, val destination: String) : ZeroCommand()
     data class CutMobileData(val targetApps: List<String>) : ZeroCommand()
     data class RestoreMobileData(val targetApps: List<String>) : ZeroCommand()
     data class MuteMicrophone(val targetApps: List<String>) : ZeroCommand()
@@ -41,6 +42,19 @@ object CommandParser {
         val lower = text.lowercase(Locale.ROOT)
 
         if (lower.isEmpty()) return ZeroCommand.Unknown("")
+
+        // 0. DIRECTIONS & OFFLINE ROUTING (/direction destination OR /direction origin to destination)
+        if (lower.startsWith("/direction") || lower.startsWith("direction") || lower.startsWith("/route") || lower.startsWith("navigate to")) {
+            val query = text.replace(Regex("^(/direction|direction|/route|navigate to)", RegexOption.IGNORE_CASE), "").trim()
+            if (query.isNotEmpty()) {
+                if (query.contains(" to ", ignoreCase = true)) {
+                    val parts = query.split(Regex("\\bto\\b", RegexOption.IGNORE_CASE))
+                    return ZeroCommand.RequestDirections(origin = parts[0].trim(), destination = parts[1].trim())
+                } else {
+                    return ZeroCommand.RequestDirections(origin = null, destination = query)
+                }
+            }
+        }
 
         // 1. HARDWARE: FLASHLIGHT / TORCH
         if (lower.contains("flashlight") || lower.contains("torch") || lower.contains("flash")) {
