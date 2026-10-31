@@ -2034,9 +2034,37 @@ HTML_TEMPLATE = """
               </button>
             </div>
 
+            <!-- WhatsApp 6-Icon Attachment Sheet (Popup) -->
+            <div id="zerochatAttachmentSheet" style="display:none; grid-template-columns:repeat(3, 1fr); gap:10px; background:#182229; border:1px solid #2a3942; border-radius:14px; padding:12px; margin-bottom:8px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+              <div onclick="sendP2PAttachment('document')" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; padding:8px; border-radius:8px; background:#1f2c34;">
+                <span style="font-size:1.5rem; background:#5f66cd; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">📄</span>
+                <span style="font-size:0.7rem; color:#e9edef;">Document</span>
+              </div>
+              <div onclick="sendP2PAttachment('camera')" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; padding:8px; border-radius:8px; background:#1f2c34;">
+                <span style="font-size:1.5rem; background:#d3396d; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">📷</span>
+                <span style="font-size:0.7rem; color:#e9edef;">Camera</span>
+              </div>
+              <div onclick="sendP2PAttachment('gallery')" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; padding:8px; border-radius:8px; background:#1f2c34;">
+                <span style="font-size:1.5rem; background:#ac44cf; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">🖼️</span>
+                <span style="font-size:0.7rem; color:#e9edef;">Gallery</span>
+              </div>
+              <div onclick="sendP2PAttachment('voice')" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; padding:8px; border-radius:8px; background:#1f2c34;">
+                <span style="font-size:1.5rem; background:#e07b22; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">🎙️</span>
+                <span style="font-size:0.7rem; color:#e9edef;">Audio</span>
+              </div>
+              <div onclick="sendP2PAttachment('location')" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; padding:8px; border-radius:8px; background:#1f2c34;">
+                <span style="font-size:1.5rem; background:#1fa855; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">📍</span>
+                <span style="font-size:0.7rem; color:#e9edef;">Location</span>
+              </div>
+              <div onclick="sendP2PAttachment('contact')" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; padding:8px; border-radius:8px; background:#1f2c34;">
+                <span style="font-size:1.5rem; background:#009de2; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">👤</span>
+                <span style="font-size:0.7rem; color:#e9edef;">Contact</span>
+              </div>
+            </div>
+
             <!-- Input Bar -->
             <div style="display:flex; gap:6px; align-items:center; background:#202c33; border-radius:24px; padding:4px 8px;">
-              <span style="font-size:1.1rem; cursor:pointer; padding-left:4px;" onclick="attachFileP2P()">📎</span>
+              <span style="font-size:1.1rem; cursor:pointer; padding-left:4px;" onclick="toggleAttachmentSheet()" title="Share Media, Location, Contacts, Files">📎</span>
               <input id="zerochatInput" type="text" placeholder="Message via Tor P2P..." style="flex:1; background:transparent; border:none; color:#fff; font-size:0.8rem; outline:none; padding:6px;" onkeydown="if(event.key==='Enter') sendZeroChatMessage()">
               <button onclick="sendZeroChatMessage()" style="width:34px; height:34px; border-radius:50%; background:#00a884; color:#000; border:none; font-size:0.9rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center;">
                 ➤
