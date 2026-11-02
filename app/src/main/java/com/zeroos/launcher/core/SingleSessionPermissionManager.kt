@@ -130,7 +130,19 @@ class SingleSessionPermissionManager(private val context: Context) {
      * Audit whether an app currently holds any background permission leaks.
      */
     fun verifyZeroBackgroundLeak(packageName: String): Boolean {
-        // AppOps should report 'deny' for all sensitive hardware sensors
-        return true
+        // Real audit: Verify AppOps hardware register states via shell/system service
+        return try {
+            val resAudio = KernelShield.executeCommandWithResult("cmd appops get $packageName RECORD_AUDIO")
+            val resCam = KernelShield.executeCommandWithResult("cmd appops get $packageName CAMERA")
+            
+            val isAudioDenied = resAudio.stdout.contains("deny") || resAudio.stdout.contains("ignore") || resAudio.stdout.contains("No operations")
+            val isCamDenied = resCam.stdout.contains("deny") || resCam.stdout.contains("ignore") || resCam.stdout.contains("No operations")
+            
+            // True only if BOTH microphone and camera AppOps are confirmed denied/ignored
+            isAudioDenied && isCamDenied
+        } catch (e: Exception) {
+            Log.e(tag, "Audit failed for $packageName", e)
+            false
+        }
     }
 }

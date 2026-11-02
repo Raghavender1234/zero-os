@@ -21,6 +21,14 @@ class AutoAirGapManager(private val context: Context) {
     private val tag = "ZeroOS-AirGap"
     private var isAirGapEnabled = true
 
+    init {
+        // Initialize idempotent ZERO_AIRGAP chain in netfilter
+        KernelShield.executeRootCommand("iptables -N ZERO_AIRGAP 2>/dev/null || true")
+        KernelShield.executeRootCommand("iptables -C OUTPUT -j ZERO_AIRGAP 2>/dev/null || iptables -I OUTPUT -j ZERO_AIRGAP")
+        KernelShield.executeRootCommand("ip6tables -N ZERO_AIRGAP 2>/dev/null || true")
+        KernelShield.executeRootCommand("ip6tables -C OUTPUT -j ZERO_AIRGAP 2>/dev/null || ip6tables -I OUTPUT -j ZERO_AIRGAP")
+    }
+
     fun setAutoAirGapEnabled(enabled: Boolean) {
         isAirGapEnabled = enabled
         Log.i(tag, "Zero-Leak Air-Gap policy set to: $enabled")
@@ -44,8 +52,8 @@ class AutoAirGapManager(private val context: Context) {
                     Log.w(tag, "App '$packageName' data is HARD-CUT by user command. Maintaining iptables DROP rule.")
                 } else {
                     // Flush iptables drop rule for this app
-                    KernelShield.executeRootCommand("iptables -D OUTPUT -m owner --uid-owner $uid -j DROP || true")
-                    KernelShield.executeRootCommand("ip6tables -D OUTPUT -m owner --uid-owner $uid -j DROP || true")
+                    KernelShield.executeRootCommand("while iptables -D ZERO_AIRGAP -m owner --uid-owner $uid -j DROP 2>/dev/null; do :; done")
+                    KernelShield.executeRootCommand("while ip6tables -D ZERO_AIRGAP -m owner --uid-owner $uid -j DROP 2>/dev/null; do :; done")
                 }
 
                 // Single-Session Permission Grant (PC-style: Active strictly while in foreground, respecting user hard-mutes)
@@ -74,8 +82,8 @@ class AutoAirGapManager(private val context: Context) {
                 Log.i(tag, "App '$packageName' (UID $uid) exited to BACKGROUND: Initiating zero-leak air-gap lockdown")
                 
                 // 1. Drop all outbound background packets at kernel netfilter layer
-                KernelShield.executeRootCommand("iptables -I OUTPUT -m owner --uid-owner $uid -j DROP")
-                KernelShield.executeRootCommand("ip6tables -I OUTPUT -m owner --uid-owner $uid -j DROP")
+                KernelShield.executeRootCommand("iptables -C ZERO_AIRGAP -m owner --uid-owner $uid -j DROP 2>/dev/null || iptables -A ZERO_AIRGAP -m owner --uid-owner $uid -j DROP")
+                KernelShield.executeRootCommand("ip6tables -C ZERO_AIRGAP -m owner --uid-owner $uid -j DROP 2>/dev/null || ip6tables -A ZERO_AIRGAP -m owner --uid-owner $uid -j DROP")
 
                 // 2. Automatically revoke Location, Mic, and Camera hardware access (PC-style Single-Session Ephemeral Grant)
                 SingleSessionPermissionManager(context).onAppClosed(packageName, uid)

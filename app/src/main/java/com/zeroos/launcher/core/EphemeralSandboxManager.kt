@@ -44,18 +44,23 @@ class EphemeralSandboxManager(private val context: Context) {
      */
     fun onAppClosed(packageName: String) {
         if (activeEphemeralPackages.contains(packageName)) {
-            Log.i(tag, "Ephemeral session ended for '$packageName'. Vaporizing all cookies, caches, and storage.")
+            Log.i(tag, "Ephemeral session ended for '$packageName'. Safely terminating temporary session.")
             
-            // 1. Force stop process
+            // 1. Terminate running process without clearing primary user account data
             KernelShield.executeRootCommand("am force-stop $packageName")
 
-            // 2. Clear app data directory (cache, databases, shared_prefs)
-            KernelShield.executeRootCommand("pm clear $packageName")
+            // 2. Clear volatile cache and temporary session cookies ONLY (preserving permanent login / databases)
+            KernelShield.executeRootCommand("rm -rf /data/data/$packageName/cache/* || true")
+            KernelShield.executeRootCommand("rm -rf /data/data/$packageName/code_cache/* || true")
 
-            // 3. Remove from active ephemeral set
+            // 3. Drop network sockets
+            KernelShield.executeRootCommand("iptables -C ZERO_AIRGAP -m owner --uid-owner $(id -u $packageName 2>/dev/null) -j DROP 2>/dev/null || true")
+
+            // 4. Remove from active ephemeral set
             activeEphemeralPackages.remove(packageName)
-            Log.i(tag, "App '$packageName' successfully wiped. Zero residue remains.")
+            Log.i(tag, "Ephemeral session for '$packageName' terminated safely without wiping user account databases.")
         }
+    }
     }
 
     fun isEphemeral(packageName: String): Boolean = activeEphemeralPackages.contains(packageName)

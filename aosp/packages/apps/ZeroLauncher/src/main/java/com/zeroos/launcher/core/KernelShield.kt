@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.util.Log
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.util.concurrent.TimeUnit
 
 /**
  * KernelShield: Executes Linux kernel-level packet drops, sensor hardware access revocation,
@@ -31,16 +32,39 @@ object KernelShield {
         }
     }
 
-    fun executeRootCommand(cmd: String): String {
+    data class CommandResult(
+        val exitCode: Int,
+        val stdout: String,
+        val stderr: String,
+        val isSuccess: Boolean
+    )
+
+    fun executeCommandWithResult(cmd: String, timeoutSec: Long = 5): CommandResult {
         return try {
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-            val reader = BufferedReader(InputStreamReader(process.inputStream))
-            val output = reader.readText()
-            process.waitFor()
-            output.trim()
+            val finished = process.waitFor(timeoutSec, TimeUnit.SECONDS)
+            if (!finished) {
+                process.destroyForcibly()
+                Log.e(TAG, "Command timed out after ${timeoutSec}s: $cmd")
+                return CommandResult(-1, "", "Timeout exceeded (${timeoutSec}s)", false)
+            }
+            val stdout = process.inputStream.bufferedReader().readText().trim()
+            val stderr = process.errorStream.bufferedReader().readText().trim()
+            val exitCode = process.exitValue()
+            CommandResult(exitCode, stdout, stderr, exitCode == 0)
         } catch (e: Exception) {
-            Log.e(TAG, "Root execution failed for: $cmd", e)
-            "ERROR: ${e.message}"
+            Log.e(TAG, "Execution exception for '$cmd': ${e.message}")
+            CommandResult(-1, "", e.message ?: "Unknown error", false)
+        }
+    }
+
+    fun executeRootCommand(cmd: String): String {
+        val res = executeCommandWithResult(cmd)
+        return if (res.isSuccess) {
+            res.stdout
+        } else {
+            Log.w(TAG, "Root command failed [exit ${res.exitCode}]: ${res.stderr.ifEmpty { cmd }}")
+            "ERROR (${res.exitCode}): ${res.stderr}"
         }
     }
 
