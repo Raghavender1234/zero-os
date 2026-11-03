@@ -328,6 +328,12 @@ class ZeroLauncherActivity : ComponentActivity() {
             is ZeroCommand.CalculateMath -> {
                 systemLog = "🧮 Math: ${cmd.expression}"
             }
+            is ZeroCommand.SetTimer -> {
+                systemLog = "⏱️ Timer set for ${cmd.durationMinutes} minutes (DeskClock)."
+            }
+            is ZeroCommand.SetAlarm -> {
+                systemLog = "⏰ Alarm set for ${cmd.timeString} (DeskClock)."
+            }
             is ZeroCommand.SearchWeb -> {
                 systemLog = "🌐 Private search: \"${cmd.query}\""
             }

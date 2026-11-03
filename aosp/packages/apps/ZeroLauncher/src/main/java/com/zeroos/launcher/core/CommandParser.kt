@@ -28,6 +28,8 @@ sealed class ZeroCommand {
     data class SaveContact(val number: String) : ZeroCommand()
     data class CalculateMath(val expression: String) : ZeroCommand()
     data class SearchWeb(val query: String) : ZeroCommand()
+    data class SetTimer(val durationMinutes: Int, val raw: String) : ZeroCommand()
+    data class SetAlarm(val timeString: String) : ZeroCommand()
     object ShowImpactDashboard : ZeroCommand()
     object AuditSpying : ZeroCommand()
     object ShowAboutPhone : ZeroCommand()
@@ -170,6 +172,21 @@ object CommandParser {
         if (lower.contains("unfreeze") || lower.contains("wake up app") || lower.startsWith("/unfreeze")) {
             val apps = extractAppTargets(lower, listOf("unfreeze", "wake up app", "/unfreeze"))
             return ZeroCommand.UnfreezeApp(apps)
+        }
+
+
+        // EVERYTHING BAR: TIMER
+        if (lower.startsWith("timer ") || lower.startsWith("set timer ")) {
+            val query = text.replace(Regex("^(set\\s+)?timer(\\s+for)?\\s*", RegexOption.IGNORE_CASE), "").trim()
+            val numMatch = Regex("(\\d+)").find(query)
+            val minutes = numMatch?.value?.toIntOrNull() ?: 5
+            return ZeroCommand.SetTimer(minutes, query)
+        }
+
+        // EVERYTHING BAR: ALARM
+        if (lower.startsWith("alarm ") || lower.startsWith("set alarm ")) {
+            val query = text.replace(Regex("^(set\\s+)?alarm(\\s+for)?\\s*", RegexOption.IGNORE_CASE), "").trim()
+            return ZeroCommand.SetAlarm(query)
         }
 
         // EVERYTHING BAR: CALL / DIAL
