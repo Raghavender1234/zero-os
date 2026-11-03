@@ -6,12 +6,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![AOSP Version](https://img.shields.io/badge/AOSP-Android%2014-green.svg)](https://source.android.com/)
-[![Kernel](https://img.shields.io/badge/Kernel-Linux%205.10%2B-orange.svg)](https://kernel.org)
-[![Standby Power](https://img.shields.io/badge/Standby%20Power-11.1%20mA%20(-88%25)-brightgreen.svg)](#-empirical-battery-benchmarks)
+[![Project Status](https://img.shields.io/badge/Status-Prototype%20%2F%20In%20Development-blue.svg)](TESTING.md)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-blueviolet.svg)](https://raghavender1234.github.io/zero-os/)
-[![Hardware Verification](https://img.shields.io/badge/Verification-TESTING.md-success.svg)](TESTING.md)
-[![Device Compatibility](https://img.shields.io/badge/Compatibility-COMPATIBILITY.md-informational.svg)](COMPATIBILITY.md)
-[![FAQ](https://img.shields.io/badge/FAQ-FAQ.md-lightgrey.svg)](FAQ.md)
+[![Verification Matrix](https://img.shields.io/badge/Status%20Matrix-TESTING.md-informational.svg)](TESTING.md)
 
 ---
 

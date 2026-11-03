@@ -5,22 +5,19 @@ PRODUCT_NAME := zero_arm64
 PRODUCT_DEVICE := zero_arm64
 PRODUCT_BRAND := ZeroOS
 PRODUCT_MANUFACTURER := ZeroOS
-PRODUCT_MODEL := ZeroPhone GSI (ARM64)
+PRODUCT_MODEL := ZeroOS GSI (ARM64)
 
 # Core ZeroOS System Packages
 PRODUCT_PACKAGES += \
     ZeroLauncher \
-    privapp-permissions-zeroos.xml \
-    audio_killswitch \
-    ZeroIntegrityBridge
+    privapp-permissions-zeroos.xml
 
-# Device Overlays (Aggressive Battery, 0W OLED, Sensor Privacy)
+# Device Overlays (OLED Palette, Sensor Privacy)
 DEVICE_PACKAGE_OVERLAYS += device/zero/zero_arm64/overlay
 
 # ==============================================================================
-# DEVICE INTEGRITY & BANKING/UPI SPECIFICATION
-# Guarantees passing Google Play Integrity (MEETS_DEVICE_INTEGRITY)
-# Enables: Google Pay (UPI & NFC Tap-to-Pay), PhonePe, Paytm, BHIM, Banking Apps
+# RUNTIME IDENTITY PROPERTIES
+# Genuine OEM / hardware build tags without synthetic bootloader-lock spoofing
 # ==============================================================================
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
     ro.build.type=user \
@@ -29,20 +26,14 @@ PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
     ro.vendor.build.tags=release-keys \
     ro.product.build.tags=release-keys \
     ro.system_ext.build.tags=release-keys \
-    ro.odm.build.tags=release-keys \
-    ro.boot.flash.locked=1 \
-    ro.boot.verifiedbootstate=green \
-    ro.boot.veritymode=enforcing \
-    ro.boot.vbmeta.device_state=locked \
-    ro.boot.warranty_bit=0 \
-    ro.warranty_bit=0
+    ro.odm.build.tags=release-keys
 
 # ==============================================================================
 # USER-INTENT ARCHITECTURE (NOT COMPANY-INTENT)
-# • Extreme battery longevity (4-7 days)
+# • High-efficiency battery baseline
 # • True OLED black (0.00W draw)
 # • Zero background ad tracking
-# • Deep instant kernel C-state doze
+# • Instant background socket severing
 # ==============================================================================
 PRODUCT_SYSTEM_PROPERTIES += \
     ro.config.zero_os=true \

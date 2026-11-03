@@ -1,4 +1,4 @@
-name: ZeroOS AOSP GSI Cloud Build
+name: ZeroOS Framework & Architecture CI
 
 on:
   workflow_dispatch:
@@ -11,11 +11,9 @@ on:
       - 'v*'
 
 jobs:
-  validate-and-build:
-    name: Build ZeroOS Shell & Validate AOSP GSI Tree
+  validate-framework-and-patches:
+    name: Validate Patches, Manifest & Architecture
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout ZeroOS Repository
         uses: actions/checkout@v4
@@ -26,64 +24,84 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Set up Build Tools
+      - name: Validate AOSP Manifest & Patches Syntax
         run: |
-          sudo apt-get update
-          sudo apt-get install -y openssl libncurses6 libncursesw6 || sudo apt-get install -y openssl
+          echo "Validating AOSP Manifest syntax..."
+          test -f aosp/manifests/zero_os.xml
+          
+          echo "Validating Framework Integration Patches..."
+          test -f aosp/patches/frameworks_base/0001-ZeroActivityManagerHook-integration.patch
+          test -f aosp/patches/frameworks_base/0002-ZeroAppOpsHook-integration.patch
+          
+          # Verify patches contain both checkOperation and noteOperation hooks
+          grep "checkOperationUnchecked" aosp/patches/frameworks_base/0002-ZeroAppOpsHook-integration.patch
+          grep "evalMode" aosp/patches/frameworks_base/0002-ZeroAppOpsHook-integration.patch
+
+      - name: Validate Emulator and Device Tree Configs
+        run: |
+          echo "Validating Emulator Product Definitions..."
+          test -f aosp/device/zero/zero_emulator/AndroidProducts.mk
+          test -f aosp/device/zero/zero_emulator/zero_emulator.mk
+          
+          echo "Validating GSI Product Definitions..."
+          test -f aosp/device/zero/zero_arm64/AndroidProducts.mk
+          test -f aosp/device/zero/zero_arm64/zero_arm64.mk
+          
+          echo "Validating Samsung A15 Tree..."
+          test -f aosp/device/samsung/a15/AndroidProducts.mk
+          test -f aosp/device/samsung/a15/a15.mk
+
+      - name: Validate System Packages & Soong Blueprints
+        run: |
+          test -f aosp/packages/apps/ZeroLauncher/Android.bp
+          test -f aosp/packages/apps/ZeroLauncher/privapp-permissions-zeroos.xml
+          test -f aosp/packages/apps/ZeroStore/Android.bp
+          test -f aosp/packages/apps/ZeroStore/privapp-permissions-zerostore.xml
 
       - name: Verify & Generate AVB 2.0 Cryptographic Keys
         run: |
           chmod +x aosp/tools/*.sh aosp/scripts/*.sh
           bash aosp/tools/generate_keys.sh
+          test -f aosp/keys/avb_pkmd.bin
+          test -f aosp/keys/releasekey.pk8
           ls -la aosp/keys/
 
-      - name: Validate System Packages & Soong Blueprints
+  compile-launcher-shell:
+    name: Compile ZeroLauncher Android Application
+    runs-on: ubuntu-latest
+    needs: validate-framework-and-patches
+    steps:
+      - name: Checkout ZeroOS Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle Packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Compile ZeroLauncher Debug APK
         run: |
-          echo "Validating ZeroLauncher and ZeroStore Soong Blueprints..."
-          test -f aosp/packages/apps/ZeroLauncher/Android.bp
-          test -f aosp/packages/apps/ZeroLauncher/privapp-permissions-zeroos.xml
-          test -f aosp/packages/apps/ZeroStore/Android.bp
-          test -f aosp/packages/apps/ZeroStore/privapp-permissions-zerostore.xml
-          echo "Soong Blueprints valid."
           if [ -f "./gradlew" ]; then
             chmod +x ./gradlew
-            ./gradlew assembleRelease --no-daemon 2>/dev/null || echo "Note: Standalone Gradle wrapper bypassed (AOSP native Soong module build active)"
+            ./gradlew assembleDebug --no-daemon --stacktrace
+          else
+            echo "Gradle wrapper not present."
           fi
 
-      - name: Validate AOSP Manifest & Device Tree Syntax
-        run: |
-          echo "Validating AOSP AndroidProducts and BoardConfig..."
-          test -f aosp/device/zero/zero_arm64/AndroidProducts.mk
-          test -f aosp/device/zero/zero_arm64/BoardConfig.mk
-          test -f aosp/device/zero/zero_arm64/zero_arm64.mk
-          test -f aosp/device/zero/zero_arm64/overlay/frameworks/base/core/res/res/values/config.xml
-          echo "AOSP Treble configuration valid."
-
-      - name: Package ZeroOS Release Bundle & Checksums
-        run: |
-          mkdir -p release_bundle
-          cp aosp/keys/avb_pkmd.bin release_bundle/ 2>/dev/null || true
-          cp aosp/keys/*.x509.pem release_bundle/ 2>/dev/null || true
-          cp flash_phone.bat flash_phone.sh release_bundle/ 2>/dev/null || true
-          cp COMPATIBILITY.md TESTING.md MIGRATION.md release_bundle/ 2>/dev/null || true
-          find app/build/outputs/apk/ -name "*.apk" -exec cp {} release_bundle/ \; 2>/dev/null || true
-          cd release_bundle && sha256sum * > SHA256SUMS.txt
-          ls -la
-
-      - name: Upload ZeroOS Production Release Artifacts
+      - name: Upload Launcher Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: ZeroOS-Production-Package
-          path: release_bundle/*
-          if-no-files-found: warn
-
-      - name: Create GitHub Release on Tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: release_bundle/*
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: ZeroLauncher-Debug-APK
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: ignore
