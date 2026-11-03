@@ -313,6 +313,24 @@ class ZeroLauncherActivity : ComponentActivity() {
                 val info = hardwareController.getHardwareSummary()
                 systemLog = info.entries.joinToString("\n") { "• ${it.key}: ${it.value}" }
             }
+            is ZeroCommand.CallContact -> {
+                systemLog = "📞 Calling ${cmd.target}..."
+            }
+            is ZeroCommand.MessageContact -> {
+                systemLog = "💬 SMS to ${cmd.target}${if (cmd.body != null) ": \"${cmd.body}\"" else ""}..."
+            }
+            is ZeroCommand.ChatContact -> {
+                systemLog = "🔒 Opening encrypted ZeroChat with ${cmd.target}..."
+            }
+            is ZeroCommand.SaveContact -> {
+                systemLog = "👤 Contact saved: ${cmd.number}"
+            }
+            is ZeroCommand.CalculateMath -> {
+                systemLog = "🧮 Math: ${cmd.expression}"
+            }
+            is ZeroCommand.SearchWeb -> {
+                systemLog = "🌐 Private search: \"${cmd.query}\""
+            }
             is ZeroCommand.LaunchApp -> {
                 systemLog = "🚀 Launching '${cmd.appQuery}'..."
             }

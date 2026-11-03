@@ -22,6 +22,12 @@ sealed class ZeroCommand {
     data class ToggleMicroWindow(val enable: Boolean) : ZeroCommand()
     data class ToggleCalmDigest(val explicitEnable: Boolean? = null) : ZeroCommand()
     data class LaunchEphemeralApp(val appQuery: String) : ZeroCommand()
+    data class CallContact(val target: String) : ZeroCommand()
+    data class MessageContact(val target: String, val body: String? = null) : ZeroCommand()
+    data class ChatContact(val target: String) : ZeroCommand()
+    data class SaveContact(val number: String) : ZeroCommand()
+    data class CalculateMath(val expression: String) : ZeroCommand()
+    data class SearchWeb(val query: String) : ZeroCommand()
     object ShowImpactDashboard : ZeroCommand()
     object AuditSpying : ZeroCommand()
     object ShowAboutPhone : ZeroCommand()
@@ -164,6 +170,49 @@ object CommandParser {
         if (lower.contains("unfreeze") || lower.contains("wake up app") || lower.startsWith("/unfreeze")) {
             val apps = extractAppTargets(lower, listOf("unfreeze", "wake up app", "/unfreeze"))
             return ZeroCommand.UnfreezeApp(apps)
+        }
+
+        // EVERYTHING BAR: CALL / DIAL
+        if (lower.startsWith("call ") || lower.startsWith("dial ")) {
+            val target = text.replace(Regex("^(call|dial)\\s+", RegexOption.IGNORE_CASE), "").trim()
+            if (target.isNotEmpty()) return ZeroCommand.CallContact(target)
+        }
+
+        // EVERYTHING BAR: MESSAGE / SMS / TEXT
+        if (lower.startsWith("message ") || lower.startsWith("text ") || lower.startsWith("msg ")) {
+            val remainder = text.replace(Regex("^(message|text|msg)\\s+", RegexOption.IGNORE_CASE), "").trim()
+            val spaceIdx = remainder.indexOf(' ')
+            return if (spaceIdx != -1) {
+                ZeroCommand.MessageContact(remainder.substring(0, spaceIdx).trim(), remainder.substring(spaceIdx + 1).trim())
+            } else {
+                ZeroCommand.MessageContact(remainder, null)
+            }
+        }
+
+        // EVERYTHING BAR: ENCRYPTED CHAT (ZEROCHAT)
+        if (lower.startsWith("chat ")) {
+            val target = text.replace(Regex("^chat\\s+", RegexOption.IGNORE_CASE), "").trim()
+            if (target.isNotEmpty()) return ZeroCommand.ChatContact(target)
+        }
+
+        // EVERYTHING BAR: ADD / SAVE CONTACT
+        if (lower.startsWith("add contact ") || lower.startsWith("save contact ") || lower.startsWith("save ")) {
+            val num = text.replace(Regex("^(add contact|save contact|save)\\s+", RegexOption.IGNORE_CASE), "").trim()
+            if (num.isNotEmpty()) return ZeroCommand.SaveContact(num)
+        }
+
+        // EVERYTHING BAR: WEB SEARCH
+        if (lower.startsWith("search ") || lower.startsWith("google ") || lower.startsWith("ddg ")) {
+            val query = text.replace(Regex("^(search|google|ddg)\\s+", RegexOption.IGNORE_CASE), "").trim()
+            if (query.isNotEmpty()) return ZeroCommand.SearchWeb(query)
+        }
+
+        // EVERYTHING BAR: DIRECT MATH EXPRESSIONS (e.g. 245 * 18, 15% of 850, 100 / 4)
+        if (lower.matches(Regex("^[0-9+\\-*/().\\s^%]+$")) && lower.any { it in "+-*/%^" }) {
+            return ZeroCommand.CalculateMath(text)
+        }
+        if (lower.matches(Regex("^[0-9.]+\\s*%\\s*(?:of)?\\s*[0-9.]+$"))) {
+            return ZeroCommand.CalculateMath(text)
         }
 
         // 12. FALLBACK: APP LAUNCHER
