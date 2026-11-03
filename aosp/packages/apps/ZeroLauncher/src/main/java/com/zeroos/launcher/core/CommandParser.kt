@@ -3,7 +3,7 @@ package com.zeroos.launcher.core
 import java.util.Locale
 
 /**
- * Data model for parsed user intents in ZeroOS.
+ * Data model for parsed user intents in ZeroOS Everything Bar 1.1.
  */
 sealed class ZeroCommand {
     data class ToggleFlashlight(val explicitEnable: Boolean? = null) : ZeroCommand()
@@ -28,8 +28,8 @@ sealed class ZeroCommand {
     data class SaveContact(val number: String) : ZeroCommand()
     data class CalculateMath(val expression: String) : ZeroCommand()
     data class SearchWeb(val query: String) : ZeroCommand()
-    data class SetTimer(val durationMinutes: Int, val raw: String) : ZeroCommand()
-    data class SetAlarm(val timeString: String) : ZeroCommand()
+    data class SetTimer(val durationSeconds: Int, val label: String) : ZeroCommand()
+    data class SetAlarm(val hour: Int, val minutes: Int, val label: String) : ZeroCommand()
     object ShowImpactDashboard : ZeroCommand()
     object AuditSpying : ZeroCommand()
     object ShowAboutPhone : ZeroCommand()
@@ -38,8 +38,8 @@ sealed class ZeroCommand {
 }
 
 /**
- * High-performance on-device natural language intent parser.
- * Executes in sub-millisecond time with zero external network dependencies.
+ * High-performance on-device natural language intent parser (v1.1).
+ * Uses word boundaries and exact intent structures to prevent false triggers (e.g., "India" -> DIA).
  */
 object CommandParser {
 
@@ -64,79 +64,100 @@ object CommandParser {
             }
         }
 
-        // 1. HARDWARE: FLASHLIGHT / TORCH
-        if (lower.contains("flashlight") || lower.contains("torch") || lower.contains("flash")) {
-            val explicit = if (lower.contains("off") || lower.contains("stop") || lower.contains("disable")) false
-                           else if (lower.contains("on") || lower.contains("start") || lower.contains("enable")) true
+        // 1. EVERYTHING BAR: TIMER (supports seconds, minutes, hours)
+        val timerMatch = Regex("^(?:set\\s+)?timer(?:\\s+for)?\\s+(\\d+)\\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours)?$", RegexOption.IGNORE_CASE).find(lower)
+        if (timerMatch != null) {
+            val qty = timerMatch.groupValues[1].toIntOrNull() ?: 10
+            val unit = timerMatch.groupValues[2].lowercase(Locale.ROOT)
+            val (totalSec, label) = when {
+                unit.startsWith("s") -> Pair(qty, "$qty seconds")
+                unit.startsWith("h") -> Pair(qty * 3600, "$qty hours")
+                else -> Pair(qty * 60, "$qty minutes")
+            }
+            return ZeroCommand.SetTimer(totalSec, label)
+        }
+
+        // 2. EVERYTHING BAR: ALARM (supports 7am, 6:30 pm, 22:15, alarm for 8am)
+        val alarmMatch = Regex("^(?:set\\s+)?alarm(?:\\s+for)?\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?$", RegexOption.IGNORE_CASE).find(lower)
+        if (alarmMatch != null) {
+            var hour = alarmMatch.groupValues[1].toIntOrNull() ?: 7
+            val minutes = alarmMatch.groupValues[2].toIntOrNull() ?: 0
+            val ampm = alarmMatch.groupValues[3].lowercase(Locale.ROOT)
+            if (ampm == "pm" && hour < 12) hour += 12
+            if (ampm == "am" && hour == 12) hour = 0
+            val safeHour = hour.coerceIn(0, 23)
+            val safeMin = minutes.coerceIn(0, 59)
+            val displayTime = String.format(Locale.ROOT, "%02d:%02d", safeHour, safeMin)
+            return ZeroCommand.SetAlarm(safeHour, safeMin, displayTime)
+        }
+
+        // 3. HARDWARE: FLASHLIGHT / TORCH (Word boundary checked)
+        if (Regex("\\b(flashlight|torch)\\b", RegexOption.IGNORE_CASE).containsMatchIn(lower) || lower == "/torch") {
+            val explicit = if (Regex("\\b(off|stop|disable)\\b").containsMatchIn(lower)) false
+                           else if (Regex("\\b(on|start|enable)\\b").containsMatchIn(lower)) true
                            else null
             return ZeroCommand.ToggleFlashlight(explicit)
         }
 
-        // 1b. HARDWARE: WI-FI HOTSPOT / TETHERING
-        if (lower.contains("hotspot") || lower.contains("tethering") || lower.contains("tether") || lower == "/hotspot") {
-            val explicit = if (lower.contains("off") || lower.contains("stop") || lower.contains("disable")) false
-                           else if (lower.contains("on") || lower.contains("start") || lower.contains("enable")) true
+        // 4. HARDWARE: WI-FI HOTSPOT / TETHERING
+        if (Regex("\\b(hotspot|tethering|tether)\\b", RegexOption.IGNORE_CASE).containsMatchIn(lower) || lower == "/hotspot") {
+            val explicit = if (Regex("\\b(off|stop|disable)\\b").containsMatchIn(lower)) false
+                           else if (Regex("\\b(on|start|enable)\\b").containsMatchIn(lower)) true
                            else null
             return ZeroCommand.ToggleHotspot(explicit)
         }
 
-        // 2. HARDWARE: GRAYSCALE (Triggers Confirmation Dialog)
-        if (lower.contains("grayscale") || lower.contains("monochrome") || lower.contains("black and white")) {
-            val explicit = if (lower.contains("off") || lower.contains("disable") || lower.contains("exit")) false
-                           else if (lower.contains("on") || lower.contains("enable")) true
+        // 5. HARDWARE: GRAYSCALE
+        if (Regex("\\b(grayscale|monochrome|black\\s+and\\s+white)\\b", RegexOption.IGNORE_CASE).containsMatchIn(lower)) {
+            val explicit = if (Regex("\\b(off|disable|exit)\\b").containsMatchIn(lower)) false
+                           else if (Regex("\\b(on|enable)\\b").containsMatchIn(lower)) true
                            else null
             return ZeroCommand.RequestGrayscale(explicit)
         }
 
-        // 3. HARDWARE: RESTART / REBOOT
-        if (lower.contains("restart") || lower.contains("reboot") || lower == "/reboot") {
+        // 6. HARDWARE: RESTART / REBOOT
+        if (Regex("\\b(restart|reboot)\\b", RegexOption.IGNORE_CASE).containsMatchIn(lower) || lower == "/reboot") {
             return ZeroCommand.RequestReboot(immediate = false)
         }
 
-        // 4. BATTERY: NOKIA MODE / DEEP SLEEP
-        if (lower.contains("dia") || lower.contains("nokia") || lower.contains("deep sleep") || lower == "/nokia-mode") {
-            val explicit = if (lower.contains("off") || lower.contains("exit") || lower.contains("disable")) false
-                           else if (lower.contains("on") || lower.contains("enable")) true
+        // 7. BATTERY: NOKIA MODE / DIA MODE (Guarded with word boundary - prevents "India" trigger)
+        if (Regex("\\b(dia\\s+mode|dia|nokia|deep\\s+sleep)\\b", RegexOption.IGNORE_CASE).containsMatchIn(lower) || lower == "/nokia-mode") {
+            val explicit = if (Regex("\\b(off|exit|disable)\\b").containsMatchIn(lower)) false
+                           else if (Regex("\\b(on|enable)\\b").containsMatchIn(lower)) true
                            else null
             return ZeroCommand.RequestDiaMode(explicit)
         }
 
-        // 5. DISPLAY: MICRO-WINDOW / 0W SUB-DISPLAY
-        if (lower.contains("micro window") || lower.contains("sub display") || lower.contains("mini screen") || lower == "/micro") {
-            val isOff = lower.contains("off") || lower.contains("exit") || lower.contains("full")
+        // 8. DISPLAY: MICRO-WINDOW
+        if (Regex("\\b(micro\\s+window|sub\\s+display|mini\\s+screen)\\b", RegexOption.IGNORE_CASE).containsMatchIn(lower) || lower == "/micro") {
+            val isOff = Regex("\\b(off|exit|full)\\b").containsMatchIn(lower)
             return ZeroCommand.ToggleMicroWindow(!isOff)
         }
 
-        // 6. PRIVACY: WHO IS SPYING / TRACKER AUDIT
+        // 9. PRIVACY AUDITS
         if (lower.contains("who is spying") || lower.contains("spy audit") || lower.contains("trackers") || lower == "/spy-audit") {
             return ZeroCommand.AuditSpying
         }
-
-        // 7. SYSTEM: ABOUT PHONE
         if (lower.contains("about phone") || lower.contains("system info") || lower == "/about") {
             return ZeroCommand.ShowAboutPhone
         }
-
-        // 7b. PRIVACY & BATTERY: IMPACT DASHBOARD / STATS
         if (lower.contains("impact") || lower.contains("stats") || lower.contains("dashboard") || lower.contains("privacy score") || lower == "/stats") {
             return ZeroCommand.ShowImpactDashboard
         }
-
-        // 7c. ATTENTION: CALM DIGEST
-        if (lower.contains("calm digest") || lower.contains("digest") || lower.contains("calm mode") || lower == "/digest") {
-            val explicit = if (lower.contains("off") || lower.contains("disable") || lower.contains("stop")) false
-                           else if (lower.contains("on") || lower.contains("enable")) true
+        if (lower.contains("calm digest") || lower.contains("calm mode") || lower == "/digest") {
+            val explicit = if (Regex("\\b(off|disable|stop)\\b").containsMatchIn(lower)) false
+                           else if (Regex("\\b(on|enable)\\b").containsMatchIn(lower)) true
                            else null
             return ZeroCommand.ToggleCalmDigest(explicit)
         }
 
-        // 7d. SANDBOX: EPHEMERAL APP LAUNCH
+        // 10. SANDBOX: EPHEMERAL APP LAUNCH
         if (lower.startsWith("ephemeral") || lower.startsWith("disposable") || lower.startsWith("temp app") || lower.startsWith("/ephemeral")) {
             val target = lower.replace(Regex("^(ephemeral|disposable|temp app|/ephemeral)\\s*"), "").trim()
             return ZeroCommand.LaunchEphemeralApp(target)
         }
 
-        // 8. KERNEL FIREWALL: CUT / RESTORE MOBILE DATA
+        // 11. KERNEL FIREWALL: CUT / RESTORE MOBILE DATA
         if (lower.contains("cut data") || lower.contains("block data") || lower.contains("kill data") || lower.contains("no internet") || lower.startsWith("/cut-data")) {
             val apps = extractAppTargets(lower, listOf("cut data for", "cut data to", "block data for", "block data to", "kill data for", "no internet for", "/cut-data"))
             return ZeroCommand.CutMobileData(apps)
@@ -146,25 +167,21 @@ object CommandParser {
             return ZeroCommand.RestoreMobileData(apps)
         }
 
-        // 9. SENSOR: UNMUTE MICROPHONE (BIDIRECTIONAL RESTORE)
-        if (lower.contains("unmute mic") || lower.contains("un-mute mic") || lower.contains("allow mic") || lower.contains("restore mic") || lower.contains("turn on mic") || lower.contains("unmute audio") || lower.startsWith("/unmute-mic")) {
-            val apps = extractAppTargets(lower, listOf("unmute mic for", "unmute mic to", "restore mic for", "allow mic for", "turn on mic for", "/unmute-mic"))
+        // 12. SENSOR: MICROPHONE & CAMERA
+        if (lower.contains("unmute mic") || lower.contains("un-mute mic") || lower.contains("allow mic") || lower.contains("restore mic") || lower.startsWith("/unmute-mic")) {
+            val apps = extractAppTargets(lower, listOf("unmute mic for", "unmute mic to", "restore mic for", "allow mic for", "/unmute-mic"))
             return ZeroCommand.UnmuteMicrophone(apps)
         }
-
-        // SENSOR: MUTE / CUT MICROPHONE
-        if (lower.contains("cut mic") || lower.contains("mute mic") || lower.contains("kill mic") || lower.contains("block mic") || lower.contains("cut audio") || lower.contains("mute audio") || lower.contains("cut microphone") || lower.startsWith("/mute-mic")) {
-            val apps = extractAppTargets(lower, listOf("cut mic for", "cut mic to", "mute mic for", "kill mic for", "block mic for", "cut microphone for", "mute audio for", "/mute-mic"))
+        if (lower.contains("cut mic") || lower.contains("mute mic") || lower.contains("kill mic") || lower.contains("block mic") || lower.startsWith("/mute-mic")) {
+            val apps = extractAppTargets(lower, listOf("cut mic for", "cut mic to", "mute mic for", "kill mic for", "block mic for", "/mute-mic"))
             return ZeroCommand.MuteMicrophone(apps)
         }
-
-        // 10. SENSOR: KILL CAMERA
         if (lower.contains("kill camera") || lower.contains("block camera") || lower.contains("mute camera") || lower.startsWith("/kill-cam")) {
             val apps = extractAppTargets(lower, listOf("kill camera for", "block camera for", "mute camera for", "/kill-cam"))
             return ZeroCommand.KillCamera(apps)
         }
 
-        // 11. HIBERNATION: FREEZE / UNFREEZE APP
+        // 13. HIBERNATION: FREEZE / UNFREEZE
         if (lower.contains("freeze") || lower.contains("hibernate") || lower.startsWith("/freeze")) {
             val apps = extractAppTargets(lower, listOf("freeze app", "freeze", "hibernate", "/freeze"))
             return ZeroCommand.FreezeApp(apps)
@@ -174,28 +191,13 @@ object CommandParser {
             return ZeroCommand.UnfreezeApp(apps)
         }
 
-
-        // EVERYTHING BAR: TIMER
-        if (lower.startsWith("timer ") || lower.startsWith("set timer ")) {
-            val query = text.replace(Regex("^(set\\s+)?timer(\\s+for)?\\s*", RegexOption.IGNORE_CASE), "").trim()
-            val numMatch = Regex("(\\d+)").find(query)
-            val minutes = numMatch?.value?.toIntOrNull() ?: 5
-            return ZeroCommand.SetTimer(minutes, query)
-        }
-
-        // EVERYTHING BAR: ALARM
-        if (lower.startsWith("alarm ") || lower.startsWith("set alarm ")) {
-            val query = text.replace(Regex("^(set\\s+)?alarm(\\s+for)?\\s*", RegexOption.IGNORE_CASE), "").trim()
-            return ZeroCommand.SetAlarm(query)
-        }
-
-        // EVERYTHING BAR: CALL / DIAL
+        // 14. EVERYTHING BAR: CALL / DIAL
         if (lower.startsWith("call ") || lower.startsWith("dial ")) {
             val target = text.replace(Regex("^(call|dial)\\s+", RegexOption.IGNORE_CASE), "").trim()
             if (target.isNotEmpty()) return ZeroCommand.CallContact(target)
         }
 
-        // EVERYTHING BAR: MESSAGE / SMS / TEXT
+        // 15. EVERYTHING BAR: MESSAGE / SMS / TEXT
         if (lower.startsWith("message ") || lower.startsWith("text ") || lower.startsWith("msg ")) {
             val remainder = text.replace(Regex("^(message|text|msg)\\s+", RegexOption.IGNORE_CASE), "").trim()
             val spaceIdx = remainder.indexOf(' ')
@@ -206,25 +208,25 @@ object CommandParser {
             }
         }
 
-        // EVERYTHING BAR: ENCRYPTED CHAT (ZEROCHAT)
+        // 16. EVERYTHING BAR: ENCRYPTED CHAT (ZEROCHAT)
         if (lower.startsWith("chat ")) {
             val target = text.replace(Regex("^chat\\s+", RegexOption.IGNORE_CASE), "").trim()
             if (target.isNotEmpty()) return ZeroCommand.ChatContact(target)
         }
 
-        // EVERYTHING BAR: ADD / SAVE CONTACT
+        // 17. EVERYTHING BAR: ADD / SAVE CONTACT
         if (lower.startsWith("add contact ") || lower.startsWith("save contact ") || lower.startsWith("save ")) {
             val num = text.replace(Regex("^(add contact|save contact|save)\\s+", RegexOption.IGNORE_CASE), "").trim()
             if (num.isNotEmpty()) return ZeroCommand.SaveContact(num)
         }
 
-        // EVERYTHING BAR: WEB SEARCH
+        // 18. EVERYTHING BAR: WEB SEARCH
         if (lower.startsWith("search ") || lower.startsWith("google ") || lower.startsWith("ddg ")) {
             val query = text.replace(Regex("^(search|google|ddg)\\s+", RegexOption.IGNORE_CASE), "").trim()
             if (query.isNotEmpty()) return ZeroCommand.SearchWeb(query)
         }
 
-        // EVERYTHING BAR: DIRECT MATH EXPRESSIONS (e.g. 245 * 18, 15% of 850, 100 / 4)
+        // 19. EVERYTHING BAR: DIRECT MATH EXPRESSIONS (e.g. 245 * 18, 15% of 850)
         if (lower.matches(Regex("^[0-9+\\-*/().\\s^%]+$")) && lower.any { it in "+-*/%^" }) {
             return ZeroCommand.CalculateMath(text)
         }
@@ -232,7 +234,7 @@ object CommandParser {
             return ZeroCommand.CalculateMath(text)
         }
 
-        // 12. FALLBACK: APP LAUNCHER
+        // 20. FALLBACK: APP LAUNCHER
         return ZeroCommand.LaunchApp(text)
     }
 
@@ -250,20 +252,11 @@ object CommandParser {
         }
 
         val lowerClean = clean.lowercase(Locale.ROOT)
-        if (lowerClean.contains("social")) {
-            return SOCIAL_APPS
-        }
-        if (lowerClean == "all" || lowerClean.contains("all app") || lowerClean.contains("everywhere") || lowerClean.contains("every app")) {
-            return ALL_APPS
-        }
+        if (lowerClean.contains("social")) return SOCIAL_APPS
+        if (lowerClean == "all" || lowerClean.contains("all app") || lowerClean.contains("everywhere")) return ALL_APPS
 
-        // Clean out words like "apps", "app"
         clean = clean.replace(Regex("\\bapps?\\b"), "").trim()
-
-        val parsed = clean.split(APP_SPLIT_REGEX)
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-
+        val parsed = clean.split(APP_SPLIT_REGEX).map { it.trim() }.filter { it.isNotEmpty() }
         return if (parsed.isEmpty()) listOf("whatsapp") else parsed
     }
 }

@@ -1277,6 +1277,62 @@ HTML_TEMPLATE = """
       overflow-y: auto;
       line-height: 1.45;
     }
+  
+    /* ZEROOS ACTIVE LIVE TIMER BANNER */
+    .active-timer-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 14px;
+      padding: 8px 14px;
+      margin: 0 16px 8px 16px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      z-index: 10;
+    }
+    .active-timer-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .timer-pulse-icon {
+      font-size: 1.25rem;
+      animation: timerPulse 1.5s infinite ease-in-out;
+    }
+    @keyframes timerPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.15); opacity: 0.85; }
+    }
+    .active-timer-digits {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fbbf24;
+      line-height: 1.1;
+    }
+    .active-timer-sub {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+    .active-timer-stop-btn {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      color: #fca5a5;
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .active-timer-stop-btn:hover {
+      background: rgba(239, 68, 68, 0.4);
+      color: #fff;
+    }
+
   </style>
 </head>
 <body>
@@ -1502,6 +1558,19 @@ HTML_TEMPLATE = """
             </div>
 
             <!-- Floating Ergonomic ZeroOS Command Center -->
+            
+            <!-- Active Timer Banner (Live countdown) -->
+            <div id="activeTimerBanner" class="active-timer-banner" style="display:none;">
+              <div class="active-timer-left">
+                <span class="timer-pulse-icon">⏱️</span>
+                <div>
+                  <div class="active-timer-digits" id="activeTimerDigits">09:59</div>
+                  <div class="active-timer-sub" id="activeTimerSub">Timer · 10 minutes remaining</div>
+                </div>
+              </div>
+              <button class="active-timer-stop-btn" onclick="cancelActiveTimer()">Stop</button>
+            </div>
+
             <div class="command-center-container">
               <div class="quick-chips-row">
                 <button class="quick-chip" id="chip-direction" onclick="fillDirectionCommand()">📍 /direction</button>
@@ -3125,17 +3194,87 @@ HTML_TEMPLATE = """
     }
 
     
+    
+    // LIVE COUNTDOWN TIMER ENGINE
+    let activeTimerInterval = null;
+    let activeTimerSecondsLeft = 0;
+    let activeTimerOriginalLabel = '';
+
     function startEverythingTimer(totalSec, label) {
-      document.getElementById('everythingResultsTray').style.display = 'none';
-      document.getElementById('androidSearchInput').value = '';
-      showToast(`⏱️ Timer started for ${label} (DeskClock countdown running)`);
+      const tray = document.getElementById('everythingResultsTray');
+      if (tray) tray.style.display = 'none';
+      const input = document.getElementById('androidSearchInput');
+      if (input) input.value = '';
+
+      if (activeTimerInterval) clearInterval(activeTimerInterval);
+
+      activeTimerSecondsLeft = totalSec;
+      activeTimerOriginalLabel = label;
+
+      const banner = document.getElementById('activeTimerBanner');
+      if (banner) banner.style.display = 'flex';
+
+      updateTimerDisplay();
+
+      activeTimerInterval = setInterval(() => {
+        activeTimerSecondsLeft--;
+        if (activeTimerSecondsLeft <= 0) {
+          clearInterval(activeTimerInterval);
+          activeTimerInterval = null;
+          if (banner) banner.style.display = 'none';
+          showToast(`🔔 TIMER FINISHED: ${label}! Ringing DeskClock gentle chime.`);
+        } else {
+          updateTimerDisplay();
+        }
+      }, 1000);
+
+      showToast(`⏱️ DeskClock Timer started: ${label}`);
+    }
+
+    function updateTimerDisplay() {
+      const digits = document.getElementById('activeTimerDigits');
+      const sub = document.getElementById('activeTimerSub');
+      if (!digits) return;
+
+      const hrs = Math.floor(activeTimerSecondsLeft / 3600);
+      const mins = Math.floor((activeTimerSecondsLeft % 3600) / 60);
+      const secs = activeTimerSecondsLeft % 60;
+
+      let formatted = '';
+      if (hrs > 0) {
+        formatted = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      } else {
+        formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
+
+      digits.innerText = formatted;
+      if (sub) sub.innerText = `Timer · ${formatted} remaining`;
+    }
+
+    function cancelActiveTimer() {
+      if (activeTimerInterval) {
+        clearInterval(activeTimerInterval);
+        activeTimerInterval = null;
+      }
+      const banner = document.getElementById('activeTimerBanner');
+      if (banner) banner.style.display = 'none';
+      showToast(`⏱️ Timer canceled.`);
     }
 
     function setEverythingAlarm(timeStr) {
-      document.getElementById('everythingResultsTray').style.display = 'none';
-      document.getElementById('androidSearchInput').value = '';
-      showToast(`⏰ Alarm SET for ${timeStr} with Gentle Chime`);
+      const tray = document.getElementById('everythingResultsTray');
+      if (tray) tray.style.display = 'none';
+      const input = document.getElementById('androidSearchInput');
+      if (input) input.value = '';
+
+      // Update widget text to reflect active alarm
+      const sub = document.getElementById('widgetBatteryText');
+      if (sub) {
+        sub.innerHTML = `🔋 4.2 Days Battery · ⏰ Alarm set ${timeStr}`;
+      }
+      showToast(`⏰ Alarm SET for ${timeStr} via DeskClock with Gentle Chime`);
     }
+
 
     function copyEverythingResult(val) {
       if (navigator.clipboard) {

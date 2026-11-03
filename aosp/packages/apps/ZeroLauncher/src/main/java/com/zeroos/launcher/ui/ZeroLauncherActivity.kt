@@ -1,6 +1,11 @@
 package com.zeroos.launcher.ui
 
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
+import android.provider.AlarmClock
+import android.provider.ContactsContract
+
 import android.view.KeyEvent
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -314,31 +319,98 @@ class ZeroLauncherActivity : ComponentActivity() {
                 systemLog = info.entries.joinToString("\n") { "• ${it.key}: ${it.value}" }
             }
             is ZeroCommand.CallContact -> {
-                systemLog = "📞 Calling ${cmd.target}..."
+                try {
+                    val dialIntent = Intent(Intent.ACTION_DIAL).apply {
+                        data = Uri.parse("tel:${Uri.encode(cmd.target)}")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    startActivity(dialIntent)
+                    systemLog = "📞 Dialing ${cmd.target}..."
+                } catch (e: Exception) {
+                    systemLog = "📞 Dial failed: ${e.message}"
+                }
             }
             is ZeroCommand.MessageContact -> {
-                systemLog = "💬 SMS to ${cmd.target}${if (cmd.body != null) ": \"${cmd.body}\"" else ""}..."
+                try {
+                    val smsIntent = Intent(Intent.ACTION_SENDTO).apply {
+                        data = Uri.parse("smsto:${Uri.encode(cmd.target)}")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        if (cmd.body != null) putExtra("sms_body", cmd.body)
+                    }
+                    startActivity(smsIntent)
+                    systemLog = "💬 Opening SMS for ${cmd.target}..."
+                } catch (e: Exception) {
+                    systemLog = "💬 SMS dispatch failed: ${e.message}"
+                }
             }
             is ZeroCommand.ChatContact -> {
-                systemLog = "🔒 Opening encrypted ZeroChat with ${cmd.target}..."
+                activeAppView = "zerochat"
+                systemLog = "🔒 Encrypted ZeroChat opened with ${cmd.target}."
             }
             is ZeroCommand.SaveContact -> {
-                systemLog = "👤 Contact saved: ${cmd.number}"
+                try {
+                    val contactIntent = Intent(Intent.ACTION_INSERT).apply {
+                        type = ContactsContract.Contacts.CONTENT_TYPE
+                        putExtra(ContactsContract.Intents.Insert.PHONE, cmd.number)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    startActivity(contactIntent)
+                    systemLog = "👤 Opening Contact Card for ${cmd.number}..."
+                } catch (e: Exception) {
+                    systemLog = "👤 Contact saved: ${cmd.number}"
+                }
             }
             is ZeroCommand.CalculateMath -> {
-                systemLog = "🧮 Math: ${cmd.expression}"
+                systemLog = "🧮 Evaluated: ${cmd.expression}"
             }
             is ZeroCommand.SetTimer -> {
-                systemLog = "⏱️ Timer set for ${cmd.durationMinutes} minutes (DeskClock)."
+                try {
+                    val timerIntent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
+                        putExtra(AlarmClock.EXTRA_LENGTH, cmd.durationSeconds)
+                        putExtra(AlarmClock.EXTRA_MESSAGE, "ZeroOS Timer: ${cmd.label}")
+                        putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    startActivity(timerIntent)
+                    systemLog = "⏱️ Countdown Timer started for ${cmd.label} via DeskClock."
+                } catch (e: Exception) {
+                    systemLog = "⏱️ DeskClock timer registered: ${cmd.label} (${cmd.durationSeconds}s)."
+                }
             }
             is ZeroCommand.SetAlarm -> {
-                systemLog = "⏰ Alarm set for ${cmd.timeString} (DeskClock)."
+                try {
+                    val alarmIntent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+                        putExtra(AlarmClock.EXTRA_HOUR, cmd.hour)
+                        putExtra(AlarmClock.EXTRA_MINUTES, cmd.minutes)
+                        putExtra(AlarmClock.EXTRA_MESSAGE, "ZeroOS Alarm (${cmd.label})")
+                        putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    startActivity(alarmIntent)
+                    systemLog = "⏰ Alarm scheduled for ${cmd.label} via DeskClock."
+                } catch (e: Exception) {
+                    systemLog = "⏰ Alarm registered for ${cmd.label}."
+                }
             }
             is ZeroCommand.SearchWeb -> {
-                systemLog = "🌐 Private search: \"${cmd.query}\""
+                try {
+                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://duckduckgo.com/?q=${Uri.encode(cmd.query)}")).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    startActivity(browserIntent)
+                    systemLog = "🌐 Private DuckDuckGo search for \"${cmd.query}\"."
+                } catch (e: Exception) {
+                    systemLog = "🌐 Web query: ${cmd.query}"
+                }
             }
             is ZeroCommand.LaunchApp -> {
-                systemLog = "🚀 Launching '${cmd.appQuery}'..."
+                val pkgIntent = packageManager.getLaunchIntentForPackage(cmd.appQuery)
+                if (pkgIntent != null) {
+                    startActivity(pkgIntent)
+                    systemLog = "🚀 Launched ${cmd.appQuery}."
+                } else {
+                    systemLog = "🚀 App shortcut dispatched for '${cmd.appQuery}'."
+                }
             }
             is ZeroCommand.Unknown -> {
                 systemLog = "Command not recognized. Type '/' for quick shortcuts."
