@@ -2359,6 +2359,31 @@ HTML_TEMPLATE = """
           <div style="display:flex; flex-direction:column; gap:8px; width:100%; height:100%; overflow-y:auto; padding-right:2px;">
             <div style="font-size:1.2rem; font-weight:300; color:#fff; padding:2px 0 6px 0;">ZeroOS Settings</div>
             
+            
+            <!-- ZeroFlow Automations Section in Settings -->
+            <div style="margin: 8px 0 4px 0; display:flex; align-items:center; justify-content:space-between;">
+              <span style="font-size:0.8rem; font-weight:700; color:#c084fc; text-transform:uppercase; letter-spacing:0.05em;">⚡ ZeroFlow Automations</span>
+              <span style="font-size:0.7rem; color:#94a3b8;">${zeroFlowRoutines.filter(r=>r.enabled).length} active</span>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${zeroFlowRoutines.map(r => `
+                <div style="background:rgba(139, 92, 246, 0.1); border:1px solid rgba(139, 92, 246, 0.3); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between;">
+                  <div style="display:flex; flex-direction:column; gap:2px; max-width:75%;">
+                    <div style="font-size:0.88rem; font-weight:700; color:#fff;">${r.name}</div>
+                    <div style="font-size:0.74rem; color:#c084fc;">WHEN <b>${r.trigger}</b></div>
+                    <div style="font-size:0.7rem; color:#94a3b8;">DO: ${r.actions.join(' · ')}</div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <button onclick="toggleRoutine('${r.id}')" style="background:${r.enabled ? '#8b5cf6' : '#334155'}; border:none; color:#fff; font-size:0.7rem; font-weight:700; padding:5px 10px; border-radius:6px; cursor:pointer;">
+                      ${r.enabled ? 'ACTIVE' : 'PAUSED'}
+                    </button>
+                    <button onclick="deleteRoutine('${r.id}')" style="background:transparent; border:none; color:#ef4444; font-size:0.85rem; cursor:pointer; padding:2px 4px;">✕</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
             <div class="settings-card" onclick="toggleFeature('nokia')">
               <div class="settings-icon" style="background:#10b981; color:#000;">🔋</div>
               <div class="settings-content">
@@ -2934,6 +2959,128 @@ HTML_TEMPLATE = """
       { key: "tiktok", name: "TikTok", sub: "Short Videos", icon: "🎵" }
     ];
 
+    
+    // ==============================================================
+    // ZEROFLOW ON-DEVICE AUTOMATIONS ENGINE (v1.0)
+    // ==============================================================
+    let zeroFlowRoutines = [
+      {
+        id: "rf_bedtime",
+        name: "🌙 Bedtime Protocol",
+        trigger: "Daily at 11:00 PM",
+        actions: ["Grayscale Mode ON", "Sound: Silent", "AirGap Background Telemetry"],
+        enabled: true,
+        lastRun: "Yesterday, 11:00 PM"
+      },
+      {
+        id: "rf_battery",
+        name: "🔋 Extreme Battery Guard",
+        trigger: "Battery drops below 15%",
+        actions: ["Engage DIA Mode (1Hz OLED)", "Kill Social Sockets"],
+        enabled: true,
+        lastRun: "2 days ago"
+      },
+      {
+        id: "rf_car",
+        name: "🚗 Commute & Navigation",
+        trigger: "Bluetooth connected: Sony WH-1000XM5",
+        actions: ["Launch ZeroMaps", "Calm Digest: Hold Alerts"],
+        enabled: false,
+        lastRun: "Never"
+      }
+    ];
+
+    function toggleRoutine(id) {
+      const r = zeroFlowRoutines.find(x => x.id === id);
+      if (r) {
+        r.enabled = !r.enabled;
+        showToast(`⚡ ${r.name} is now ${r.enabled ? 'ACTIVE' : 'PAUSED'}`);
+        if (state.active_app === 'settings') {
+          launchForegroundApp('settings');
+        }
+      }
+    }
+
+    function deleteRoutine(id) {
+      zeroFlowRoutines = zeroFlowRoutines.filter(x => x.id !== id);
+      showToast(`🗑️ Routine deleted.`);
+      if (state.active_app === 'settings') {
+        launchForegroundApp('settings');
+      }
+    }
+
+    function saveZeroFlowRoutine(name, trigger, actionsStr) {
+      const actions = actionsStr.split('|');
+      const newRoutine = {
+        id: "rf_" + Date.now(),
+        name: name,
+        trigger: trigger,
+        actions: actions,
+        enabled: true,
+        lastRun: "Just now"
+      };
+      zeroFlowRoutines.unshift(newRoutine);
+      document.getElementById('everythingResultsTray').style.display = 'none';
+      document.getElementById('androidSearchInput').value = '';
+      showToast(`⚡ ZeroFlow SAVED: "${name}" is armed & ready.`);
+    }
+
+        function parseZeroFlowInput(raw) {
+      const clean = raw.replace(/^(auto:|routine:|when|if)\s*/i, '').trim();
+      let trigger = "Smart Context";
+      let actions = [];
+
+      if (/\bthen\b/i.test(clean)) {
+        const parts = clean.split(/\bthen\b/i);
+        trigger = parts[0].trim();
+        actions = parts[1].split(/[,&]|\band\b/i).map(s => s.trim()).filter(Boolean);
+      } else if (/^(?:daily\s+)?at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?/i.test(clean)) {
+        const m = clean.match(/^((?:daily\s+)?at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s+(.*)$/i);
+        if (m) {
+          trigger = m[1].replace(/^at/i, 'Daily at');
+          actions = m[2].split(/[,&]|\band\b/i).map(s => s.trim()).filter(Boolean);
+        }
+      } else if (/^battery/i.test(clean)) {
+        const m = clean.match(/^(battery\s*(?:<|<=|below)\s*\d+%?)\s+(.*)$/i);
+        if (m) {
+          trigger = m[1].replace(/</, 'below ');
+          actions = m[2].split(/[,&]|\band\b/i).map(s => s.trim()).filter(Boolean);
+        }
+      } else if (/^wifi/i.test(clean)) {
+        const m = clean.match(/^(wifi\s+[a-zA-Z0-9_-]+)\s+(.*)$/i);
+        if (m) {
+          trigger = "Connected to " + m[1];
+          actions = m[2].split(/[,&]|\band\b/i).map(s => s.trim()).filter(Boolean);
+        }
+      } else if (/^bluetooth/i.test(clean)) {
+        const m = clean.match(/^(bluetooth\s+[a-zA-Z0-9_-]+)\s+(.*)$/i);
+        if (m) {
+          trigger = "Connected to " + m[1];
+          actions = m[2].split(/[,&]|\band\b/i).map(s => s.trim()).filter(Boolean);
+        }
+      } else {
+        trigger = "Smart Trigger";
+        actions = clean.split(/[,&]|\band\b/i).map(s => s.trim()).filter(Boolean);
+      }
+
+      if (actions.length === 0) actions = ["Execute Action"];
+
+      // Capitalize actions nicely
+      const cleanActions = actions.map(a => {
+        let low = a.toLowerCase();
+        if (low.includes('grayscale')) return 'Grayscale ON';
+        if (low.includes('silent')) return 'Sound: Silent';
+        if (low.includes('vibrate')) return 'Sound: Vibrate';
+        if (low.includes('dia')) return 'DIA Mode (1Hz OLED)';
+        if (low.includes('maps')) return 'Launch ZeroMaps';
+        if (low.includes('dnd')) return 'DND Active';
+        if (low.includes('airgap')) return 'AirGap Social Telemetry';
+        return a.charAt(0).toUpperCase() + a.slice(1);
+      });
+
+      return { trigger, actions: cleanActions, name: `⚡ Routine: ${trigger}` };
+    }
+
     function onEverythingBarInput(raw) {
       const q = (raw || '').trim();
       const tray = document.getElementById('everythingResultsTray');
@@ -2949,6 +3096,45 @@ HTML_TEMPLATE = """
       const lower = q.toLowerCase();
 
       
+      
+      // 0. ZEROFLOW AUTOMATION PARSING (e.g. auto: at 11pm grayscale and silent, auto: battery < 15% dia mode)
+      if (lower.startsWith('auto:') || lower.startsWith('routine:') || lower.startsWith('when ') || lower.startsWith('if ') || lower === 'routines' || lower === 'automations') {
+        if (lower === 'routines' || lower === 'automations') {
+          cardsHtml += `
+            <div class="tray-card">
+              <div class="tray-card-left" onclick="launchForegroundApp('settings')">
+                <span class="tray-icon" style="background:#8b5cf6; color:#fff;">⚡</span>
+                <div>
+                  <div class="tray-title" style="color:#c084fc; font-size:1.05rem; font-weight:700;">ZeroFlow Automations</div>
+                  <div class="tray-sub">${zeroFlowRoutines.filter(r => r.enabled).length} active routines · Tap to manage</div>
+                </div>
+              </div>
+              <div class="tray-actions">
+                <button class="tray-btn primary" onclick="launchForegroundApp('settings')">Manage</button>
+              </div>
+            </div>
+          `;
+        } else {
+          const parsed = parseZeroFlowInput(q);
+          const actionsStr = parsed.actions.join(' · ');
+          const actionsArg = parsed.actions.join('|');
+          cardsHtml += `
+            <div class="tray-card" style="border-left: 3px solid #a855f7;">
+              <div class="tray-card-left" onclick="saveZeroFlowRoutine('${parsed.name}', '${parsed.trigger}', '${actionsArg}')">
+                <span class="tray-icon" style="background:#8b5cf6; color:#fff;">⚡</span>
+                <div>
+                  <div class="tray-title" style="color:#c084fc; font-size:1.05rem; font-weight:700;">${parsed.name}</div>
+                  <div class="tray-sub">WHEN <b>${parsed.trigger}</b> → DO: <b>${actionsStr}</b></div>
+                </div>
+              </div>
+              <div class="tray-actions">
+                <button class="tray-btn primary" style="background:#8b5cf6; border-color:#a855f7;" onclick="saveZeroFlowRoutine('${parsed.name}', '${parsed.trigger}', '${actionsArg}')">⚡ Save Routine</button>
+              </div>
+            </div>
+          `;
+        }
+      }
+
       // 0a. TIMER DETECTION (e.g. timer 10 mins, timer 5m, timer 30s, set timer 15 minutes)
       const timerMatch = lower.match(/^(?:set\s+)?timer(?:\s+for)?\s+(\d+)\s*(m|min|mins|minute|minutes|s|sec|secs|second|seconds|h|hr|hrs|hour|hours)?$/i);
       if (timerMatch) {
@@ -3301,6 +3487,18 @@ HTML_TEMPLATE = """
       const lower = val.toLowerCase();
 
       
+      
+      // Check direct "auto:" or "routine:"
+      if (lower.startsWith('auto:') || lower.startsWith('routine:') || lower.startsWith('when ') || lower.startsWith('if ')) {
+        const parsed = parseZeroFlowInput(val);
+        saveZeroFlowRoutine(parsed.name, parsed.trigger, parsed.actions.join('|'));
+        return;
+      }
+      if (lower === 'routines' || lower === 'automations') {
+        launchForegroundApp('settings');
+        return;
+      }
+
       // Check direct "timer <duration>"
       const execTimerMatch = lower.match(/^(?:set\s+)?timer(?:\s+for)?\s+(\d+)\s*(m|min|mins|minute|minutes|s|sec|secs|second|seconds|h|hr|hrs|hour|hours)?$/i);
       if (execTimerMatch) {

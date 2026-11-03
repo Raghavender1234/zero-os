@@ -30,6 +30,8 @@ sealed class ZeroCommand {
     data class SearchWeb(val query: String) : ZeroCommand()
     data class SetTimer(val durationSeconds: Int, val label: String) : ZeroCommand()
     data class SetAlarm(val hour: Int, val minutes: Int, val label: String) : ZeroCommand()
+    data class CreateRoutine(val name: String, val trigger: String, val actions: List<String>, val raw: String) : ZeroCommand()
+    object ShowAutomations : ZeroCommand()
     object ShowImpactDashboard : ZeroCommand()
     object AuditSpying : ZeroCommand()
     object ShowAboutPhone : ZeroCommand()
@@ -50,6 +52,50 @@ object CommandParser {
         val lower = text.lowercase(Locale.ROOT)
 
         if (lower.isEmpty()) return ZeroCommand.Unknown("")
+
+        // ZEROFLOW: AUTOMATIONS & ROUTINES
+        if (lower == "routines" || lower == "automations" || lower == "/routines" || lower == "/auto") {
+            return ZeroCommand.ShowAutomations
+        }
+        if (lower.startsWith("auto:") || lower.startsWith("routine:") || lower.startsWith("when ") || lower.startsWith("if ")) {
+            val clean = text.replace(Regex("^(auto:|routine:|when|if)\\s*", RegexOption.IGNORE_CASE), "").trim()
+            val triggerPart: String
+            val actionPart: String
+            if (clean.contains(" then ", ignoreCase = true)) {
+                val parts = clean.split(Regex("\\bthen\\b", RegexOption.IGNORE_CASE), limit = 2)
+                triggerPart = parts[0].trim()
+                actionPart = parts[1].trim()
+            } else if (clean.contains(" do ", ignoreCase = true)) {
+                val parts = clean.split(Regex("\\bdo\\b", RegexOption.IGNORE_CASE), limit = 2)
+                triggerPart = parts[0].trim()
+                actionPart = parts[1].trim()
+            } else {
+                // Heuristic split e.g. "at 11pm grayscale and silent"
+                val timeMatch = Regex("^(at\\s+\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)?)\\s+(.*)$", RegexOption.IGNORE_CASE).find(clean)
+                val battMatch = Regex("^(battery\\s*(?:<|<=|below)\\s*\\d+%?)\\s+(.*)$", RegexOption.IGNORE_CASE).find(clean)
+                val wifiMatch = Regex("^(wifi\\s+[a-zA-Z0-9_-]+)\\s+(.*)$", RegexOption.IGNORE_CASE).find(clean)
+                when {
+                    timeMatch != null -> {
+                        triggerPart = timeMatch.groupValues[1]
+                        actionPart = timeMatch.groupValues[2]
+                    }
+                    battMatch != null -> {
+                        triggerPart = battMatch.groupValues[1]
+                        actionPart = battMatch.groupValues[2]
+                    }
+                    wifiMatch != null -> {
+                        triggerPart = wifiMatch.groupValues[1]
+                        actionPart = wifiMatch.groupValues[2]
+                    }
+                    else -> {
+                        triggerPart = "Event detected"
+                        actionPart = clean
+                    }
+                }
+            }
+            val actions = actionPart.split(Regex("[,&]|\\band\\b", RegexOption.IGNORE_CASE)).map { it.trim() }.filter { it.isNotEmpty() }
+            return ZeroCommand.CreateRoutine(name = "Auto: $triggerPart", trigger = triggerPart, actions = actions, raw = text)
+        }
 
         // 0. DIRECTIONS & OFFLINE ROUTING (/direction destination OR /direction origin to destination)
         if (lower.startsWith("/direction") || lower.startsWith("direction") || lower.startsWith("/route") || lower.startsWith("navigate to")) {

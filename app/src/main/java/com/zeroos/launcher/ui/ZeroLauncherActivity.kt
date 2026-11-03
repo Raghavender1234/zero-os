@@ -377,6 +377,13 @@ class ZeroLauncherActivity : ComponentActivity() {
                     systemLog = "⏱️ DeskClock timer registered: ${cmd.label} (${cmd.durationSeconds}s)."
                 }
             }
+            is ZeroCommand.CreateRoutine -> {
+                systemLog = "⚡ ZeroFlow Routine SAVED: WHEN ${cmd.trigger} -> DO ${cmd.actions.joinToString()}."
+            }
+            is ZeroCommand.ShowAutomations -> {
+                activeAppView = "settings"
+                systemLog = "⚡ ZeroFlow Active Routines opened."
+            }
             is ZeroCommand.SetAlarm -> {
                 try {
                     val alarmIntent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
