@@ -1,0 +1,18 @@
+From: ZeroOS Core Team <core@zero-os.org>
+Subject: [PATCH 2/2] appops: Wire ZeroAppOpsHook into permission checks and operations
+
+Integrates Single-Session sensor restriction and permanent hard-mute enforcement
+directly into AppOpsService checkOperation / noteOperation.
+
+--- a/services/core/java/com/android/server/appop/AppOpsService.java
++++ b/services/core/java/com/android/server/appop/AppOpsService.java
+@@ -45,6 +45,7 @@ import android.util.ArraySet;
+ import com.android.internal.util.Preconditions;
++import com.android.server.appop.ZeroAppOpsHook;
+
+@@ -3412,6 +3413,11 @@ public class AppOpsService extends IAppOpsService.Stub {
+         int mode = checkOperationUnchecked(code, uid, packageName);
++        // ZeroOS Privacy Override: Intercept background sensor polling and hard-mutes
++        mode = ZeroAppOpsHook.evaluateOperation(code, uid, packageName, getUidStateLocked(uid), mode);
+         return mode;
+     }

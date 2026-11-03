@@ -61,7 +61,6 @@ class EphemeralSandboxManager(private val context: Context) {
             Log.i(tag, "Ephemeral session for '$packageName' terminated safely without wiping user account databases.")
         }
     }
-    }
 
     fun isEphemeral(packageName: String): Boolean = activeEphemeralPackages.contains(packageName)
 }

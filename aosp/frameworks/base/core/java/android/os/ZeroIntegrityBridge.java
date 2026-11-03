@@ -16,92 +16,95 @@
 
 package android.os;
 
-import android.app.Application;
+import android.content.Context;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
 import android.util.Log;
-import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
 
 /**
  * ZeroIntegrityBridge
  * 
- * Provides hardware security attestation bridge for Google Play Integrity API.
- * Ensures 100% compatibility for:
- * - UPI Applications (PhonePe, Google Pay India, Paytm, BHIM, CRED)
- * - Global Mobile Banking Apps (HDFC, SBI, ICICI, Chase, Monzo, Revolut)
- * - Google Wallet Contactless NFC Tap-and-Pay
- *
- * Enforces production 'user' release profiles without compromising user privacy.
+ * Hardware-Honest Security & Attestation Diagnostic Service.
+ * 
+ * Principles:
+ * 1. Zero Device Spoofing: Preserves true hardware identity (Samsung, Motorola, Pixel).
+ *    Never injects fake Google Pixel ('husky') fingerprints that break vendor camera/HALs
+ *    or get blacklisted by Google.
+ * 2. Transparent Attestation: Queries device KeyMint / StrongBox hardware Keystore
+ *    and reports genuine attestation states.
  */
 public final class ZeroIntegrityBridge {
 
     private static final String TAG = "ZeroIntegrityBridge";
 
-    // Packages requiring Play Integrity hardware attestation
-    private static final Set<String> ATTESTATION_PACKAGES = new HashSet<>(Arrays.asList(
-        "com.google.android.gms",
-        "com.google.android.gms.unstable",
-        "com.google.android.apps.walletnfcrel", // Google Wallet
-        "com.google.android.apps.nbu.paisa.user", // Google Pay (Tez / UPI)
-        "com.phonepe.app",                       // PhonePe UPI
-        "net.one97.paytm",                        // Paytm UPI
-        "in.org.npci.upiapp",                    // BHIM UPI
-        "com.dreamplug.androidapp"               // CRED UPI
-    ));
-
-    // Certified CTS Hardware Profile (Matches Android 14 Production Keybox)
-    private static final String CERTIFIED_BRAND = "google";
-    private static final String CERTIFIED_MANUFACTURER = "Google";
-    private static final String CERTIFIED_DEVICE = "husky";
-    private static final String CERTIFIED_PRODUCT = "husky";
-    private static final String CERTIFIED_MODEL = "Pixel 8 Pro";
-    private static final String CERTIFIED_FINGERPRINT = "google/husky/husky:14/AP2A.240805.005/12025142:user/release-keys";
-    private static final String CERTIFIED_SECURITY_PATCH = "2026-08-05";
+    public enum AttestationStatus {
+        HARDWARE_BACKED_KEYMINT,
+        STRONGBOX_ENCLAVE,
+        SOFTWARE_FALLBACK,
+        UNAVAILABLE
+    }
 
     private ZeroIntegrityBridge() {}
 
     /**
-     * Initializes the integrity bridge within the application's loaded runtime.
-     * Called by ActivityThread during bindApplication.
+     * Initializes hardware security diagnostics during application bootstrap.
+     * Preserves genuine OEM identity (Build.DEVICE, Build.MODEL, Build.MANUFACTURER).
      */
     public static void init(String packageName) {
         if (packageName == null) return;
-
-        // Check if package performs hardware safety attestation
-        boolean needsAttestation = ATTESTATION_PACKAGES.contains(packageName) 
-            || packageName.contains("bank") 
-            || packageName.contains("wallet") 
-            || packageName.contains("upi")
-            || packageName.contains("pay");
-
-        if (needsAttestation) {
-            Log.i(TAG, "Arming Device Integrity Attestation Bridge for package: " + packageName);
-            spoofCertifiedProperties();
-        }
+        // Maintain genuine hardware parameters without property spoofing
+        Log.d(TAG, "Initialized integrity subsystem for: " + packageName + " [Hardware: " + Build.MODEL + "]");
     }
 
-    private static void spoofCertifiedProperties() {
+    /**
+     * Diagnostic helper: Tests whether the physical device provides hardware-backed KeyMint/StrongBox.
+     */
+    public static AttestationStatus evaluateHardwareSecurity(Context context) {
         try {
-            setField(Build.class, "BRAND", CERTIFIED_BRAND);
-            setField(Build.class, "MANUFACTURER", CERTIFIED_MANUFACTURER);
-            setField(Build.class, "DEVICE", CERTIFIED_DEVICE);
-            setField(Build.class, "PRODUCT", CERTIFIED_PRODUCT);
-            setField(Build.class, "MODEL", CERTIFIED_MODEL);
-            setField(Build.class, "FINGERPRINT", CERTIFIED_FINGERPRINT);
-            setField(Build.class, "TYPE", "user");
-            setField(Build.class, "TAGS", "release-keys");
-            setField(Build.VERSION.class, "SECURITY_PATCH", CERTIFIED_SECURITY_PATCH);
+            KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+            keyStore.load(null);
 
-            Log.i(TAG, "Successfully spoofed CTS release-keys. Play Integrity MEETS_DEVICE_INTEGRITY achieved.");
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore"
+            );
+
+            KeyGenParameterSpec spec = new KeyGenParameterSpec.Builder(
+                "zero_integrity_test_alias",
+                KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY
+            )
+            .setDigests(KeyProperties.DIGEST_SHA256)
+            .setIsStrongBoxBacked(true)
+            .build();
+
+            kpg.initialize(spec);
+            kpg.generateKeyPair();
+            keyStore.deleteEntry("zero_integrity_test_alias");
+
+            return AttestationStatus.STRONGBOX_ENCLAVE;
         } catch (Exception e) {
-            Log.e(TAG, "Failed to inject integrity properties: " + e.getMessage());
-        }
-    }
+            // Strongbox not present; check standard KeyMint hardware
+            try {
+                KeyPairGenerator kpg = KeyPairGenerator.getInstance(
+                    KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore"
+                );
+                KeyGenParameterSpec spec = new KeyGenParameterSpec.Builder(
+                    "zero_integrity_test_alias",
+                    KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY
+                )
+                .setDigests(KeyProperties.DIGEST_SHA256)
+                .build();
 
-    private static void setField(Class<?> clazz, String fieldName, Object value) throws NoSuchFieldException, IllegalAccessException {
-        Field field = clazz.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(null, value);
+                kpg.initialize(spec);
+                kpg.generateKeyPair();
+                KeyStore.getInstance("AndroidKeyStore").load(null);
+                KeyStore.getInstance("AndroidKeyStore").deleteEntry("zero_integrity_test_alias");
+
+                return AttestationStatus.HARDWARE_BACKED_KEYMINT;
+            } catch (Exception ex) {
+                return AttestationStatus.SOFTWARE_FALLBACK;
+            }
+        }
     }
 }

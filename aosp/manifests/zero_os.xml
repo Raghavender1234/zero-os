@@ -17,8 +17,10 @@
     <!-- AOSP GSI & Core Framework Overlays -->
     <project path="device/zero/zero_arm64" name="device_zero_arm64" remote="zero" />
     <project path="packages/apps/ZeroLauncher" name="zero_launcher" remote="zero" />
+    <project path="packages/apps/ZeroStore" name="zero_store" remote="zero" />
 
     <!-- Core LineageOS HAL & Hardware Interfaces (Project Treble GSI Base) -->
     <project path="hardware/lineage/interfaces" name="android_hardware_lineage_interfaces" remote="lineage" />
 
+    <!-- ZeroOS Framework Integration Patches are applied to frameworks/base during build -->
 </manifest>

@@ -1,0 +1,21 @@
+From: ZeroOS Core Team <core@zero-os.org>
+Subject: [PATCH 1/2] ams: Wire ZeroActivityManagerHook into process state changes
+
+Enforces immediate background socket drop and foreground network restoration
+directly from ActivityManagerService.
+
+--- a/services/core/java/com/android/server/am/ActivityManagerService.java
++++ b/services/core/java/com/android/server/am/ActivityManagerService.java
+@@ -68,6 +68,7 @@ import android.util.Log;
+ import com.android.server.am.ProcessRecord;
++import com.android.server.am.ZeroActivityManagerHook;
+
+@@ -5210,6 +5211,15 @@ public class ActivityManagerService extends IActivityManager.Stub
+     final void updateProcessForegroundLocked(ProcessRecord app, boolean isForeground,
+             int oomAdjReason, boolean nowVisible) {
++        if (isForeground) {
++            ZeroActivityManagerHook.onProcessForegrounded(mContext, app.info.packageName, app.uid);
++        } else {
++            ZeroActivityManagerHook.onProcessBackgrounded(mContext, app.info.packageName, app.uid);
++        }
++    }

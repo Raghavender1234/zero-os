@@ -20,8 +20,6 @@ import android.content.Context;
 import android.media.AudioManager;
 import android.os.Process;
 import android.util.Log;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -31,9 +29,9 @@ import java.util.Set;
  * 
  * Intercepts Android Process Lifecycle transitions inside ActivityManagerService.
  * Enforces the User-Intent Air-Gap:
- * 1. Immediate socket severing on app exit (0 background telemetry).
- * 2. Universal media and navigation exemptions (Amazon Music, Spotify, Waze, OsmAnd).
- * 3. 4 to 7 day standby battery preservation.
+ * 1. Immediate socket severing on app exit via dedicated ZERO_AIRGAP chain.
+ * 2. Universal media and navigation exemptions (Spotify, Waze, OsmAnd, Google Maps).
+ * 3. Idempotent netfilter rule management (0 duplicate rules).
  */
 public final class ZeroActivityManagerHook {
 
@@ -42,27 +40,27 @@ public final class ZeroActivityManagerHook {
     // Known media streaming applications
     private static final Set<String> MEDIA_PACKAGES = new HashSet<>(Arrays.asList(
         "com.spotify.music",
-        "com.amazon.mp3",                          // Amazon Music
-        "com.apple.android.music",                 // Apple Music
-        "com.google.android.apps.youtube.music",  // YouTube Music
-        "com.aspiro.tidal",                       // Tidal Hi-Fi
-        "deezer.android.app",                     // Deezer
-        "com.soundcloud.android",                 // SoundCloud
-        "com.pandora.android",                    // Pandora
-        "com.audible.application",                // Audible Audiobooks
-        "au.com.shiftyjelly.pocketcasts",         // Pocket Casts
-        "com.maxmpz.audioplayer"                  // Poweramp
+        "com.amazon.mp3",
+        "com.apple.android.music",
+        "com.google.android.apps.youtube.music",
+        "com.aspiro.tidal",
+        "deezer.android.app",
+        "com.soundcloud.android",
+        "com.pandora.android",
+        "com.audible.application",
+        "au.com.shiftyjelly.pocketcasts",
+        "com.maxmpz.audioplayer"
     ));
 
     // Known navigation applications
     private static final Set<String> NAVIGATION_PACKAGES = new HashSet<>(Arrays.asList(
-        "com.google.android.apps.maps",           // Google Maps
-        "com.waze",                               // Waze Navigation
-        "com.here.app.maps",                      // HERE WeGo
-        "net.osmand",                             // OsmAnd
+        "com.google.android.apps.maps",
+        "com.waze",
+        "com.here.app.maps",
+        "net.osmand",
         "net.osmand.plus",
-        "com.citymapper.app.release",             // Citymapper
-        "com.sygic.aura"                          // Sygic GPS
+        "com.citymapper.app.release",
+        "com.sygic.aura"
     ));
 
     private ZeroActivityManagerHook() {}
@@ -81,8 +79,8 @@ public final class ZeroActivityManagerHook {
             return;
         }
 
-        // 2. User-Intent Air-Gap: Slam the netfilter firewall steel door
-        Log.i(TAG, "[" + packageName + "] User exited app. Severing background sockets to eliminate tracking.");
+        // 2. User-Intent Air-Gap: Sever background sockets
+        Log.i(TAG, "[" + packageName + "] App backgrounded. Severing network sockets via ZERO_AIRGAP chain.");
         applyKernelNetfilterDrop(uid);
     }
 
@@ -94,12 +92,11 @@ public final class ZeroActivityManagerHook {
             return;
         }
 
-        Log.i(TAG, "[" + packageName + "] User foregrounded app. Restoring network sockets.");
+        Log.i(TAG, "[" + packageName + "] App foregrounded. Restoring network sockets.");
         restoreKernelNetfilter(uid);
     }
 
     private static boolean isMediaOrNavActive(Context context, String packageName) {
-        // Universal hardware check: is audio playing through the Linux audio HAL?
         if (MEDIA_PACKAGES.contains(packageName) || packageName.contains("music") || packageName.contains("audio")) {
             AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
             if (audioManager != null && audioManager.isMusicActive()) {
@@ -107,9 +104,7 @@ public final class ZeroActivityManagerHook {
             }
         }
 
-        // Check if navigation package has an active foreground service
         if (NAVIGATION_PACKAGES.contains(packageName) || packageName.contains("map") || packageName.contains("nav")) {
-            // Preserved for active trip route
             return true;
         }
 
@@ -117,25 +112,33 @@ public final class ZeroActivityManagerHook {
     }
 
     private static void applyKernelNetfilterDrop(int uid) {
-        // Direct iptables / eBPF kernel call to drop outgoing packets from this app UID
         try {
-            java.lang.Process p = Runtime.getRuntime().exec(new String[]{
-                "/system/bin/iptables", "-A", "OUTPUT", "-m", "owner", "--uid-owner", String.valueOf(uid), "-j", "DROP"
-            });
-            p.waitFor();
+            // Idempotent insertion into custom ZERO_AIRGAP chain (prevents rule stacking)
+            Runtime.getRuntime().exec(new String[]{
+                "/system/bin/sh", "-c",
+                "iptables -N ZERO_AIRGAP 2>/dev/null || true; " +
+                "iptables -C OUTPUT -j ZERO_AIRGAP 2>/dev/null || iptables -I OUTPUT -j ZERO_AIRGAP; " +
+                "iptables -C ZERO_AIRGAP -m owner --uid-owner " + uid + " -j DROP 2>/dev/null || " +
+                "iptables -A ZERO_AIRGAP -m owner --uid-owner " + uid + " -j DROP; " +
+                "ip6tables -N ZERO_AIRGAP 2>/dev/null || true; " +
+                "ip6tables -C OUTPUT -j ZERO_AIRGAP 2>/dev/null || ip6tables -I OUTPUT -j ZERO_AIRGAP; " +
+                "ip6tables -C ZERO_AIRGAP -m owner --uid-owner " + uid + " -j DROP 2>/dev/null || " +
+                "ip6tables -A ZERO_AIRGAP -m owner --uid-owner " + uid + " -j DROP"
+            }).waitFor();
         } catch (Exception e) {
-            Log.w(TAG, "Netfilter drop fallback: " + e.getMessage());
+            Log.w(TAG, "Netfilter drop failed: " + e.getMessage());
         }
     }
 
     private static void restoreKernelNetfilter(int uid) {
         try {
-            java.lang.Process p = Runtime.getRuntime().exec(new String[]{
-                "/system/bin/iptables", "-D", "OUTPUT", "-m", "owner", "--uid-owner", String.valueOf(uid), "-j", "DROP"
-            });
-            p.waitFor();
+            Runtime.getRuntime().exec(new String[]{
+                "/system/bin/sh", "-c",
+                "while iptables -D ZERO_AIRGAP -m owner --uid-owner " + uid + " -j DROP 2>/dev/null; do :; done; " +
+                "while ip6tables -D ZERO_AIRGAP -m owner --uid-owner " + uid + " -j DROP 2>/dev/null; do :; done"
+            }).waitFor();
         } catch (Exception e) {
-            // Already restored or not present
+            // Restored
         }
     }
 }
